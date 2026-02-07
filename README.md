@@ -1,188 +1,123 @@
-# 🚀 Antigravity Agent Starter Kit
+# 📋 Sistema de Automação de Contrato Social
 
-> A production-ready template for building reliable, self-improving AI agents using a proven 3-layer architecture
+Sistema inteligente para geração automática de Contratos Sociais de Sociedade Limitada, utilizando Inteligência Artificial para extração de dados de documentos.
 
-## 📹 Overview
+![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
+![Flask](https://img.shields.io/badge/Flask-3.0+-green.svg)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-The Antigravity Agent Starter Kit is a battle-tested framework for building AI agents that actually work in production. Instead of letting LLMs handle everything (which compounds errors), this architecture separates concerns into three layers: directives (what to do), orchestration (decision making), and execution (deterministic code). The result? Agents that self-improve, handle errors gracefully, and maintain 90%+ reliability even across complex multi-step workflows.
+## ✨ Funcionalidades
 
-This template includes:
-- ✅ Pre-configured 3-layer architecture with clear separation of concerns
-- ✅ Self-annealing error recovery system that learns from failures
-- ✅ Modular skills system for extending agent capabilities
-- ✅ Production-ready file organization and best practices
-- ✅ Example skills to get you started immediately
+- **Extração Inteligente**: Utiliza Mistral AI e OpenAI para extrair dados de documentos
+- **Suporte a Múltiplos Formatos**: PDFs, imagens (JPG, PNG) e documentos escaneados
+- **OCR Avançado**: Conversão automática de PDFs baseados em imagem para extração via Vision API
+- **Múltiplos Sócios**: Suporte para 1 a 10 sócios por contrato
+- **Geração DOCX**: Contratos gerados em formato Word editável
+- **Interface Moderna**: Design responsivo e intuitivo
 
-It's designed for developers, automation engineers, and AI builders who want to create agents that are reliable, maintainable, and continuously improving.
+## 🚀 Como Usar
 
-## 🎨 Features
+### 1. Instalação
 
-| Feature | Description |
-|---------|-------------|
-| 🏗️ **3-Layer Architecture** | Separates probabilistic AI decisions from deterministic execution, preventing error compounding and ensuring reliability |
-| 🔄 **Self-Annealing System** | Automatically learns from failures, updates directives, and improves over time without manual intervention |
-| 🧩 **Modular Skills** | Plug-and-play skill system with progressive disclosure - only loads what's needed when it's needed |
-| 📦 **Bundled Resources** | Scripts, references, and assets organized for maximum reusability and minimal context pollution |
-| 🎯 **Production-Ready** | Clear file organization, environment management, and cloud-first deliverables built in from day one |
+```bash
+# Clone o repositório
+git clone https://github.com/Tiagolw/Automa-o-contrato-social.git
+cd Automa-o-contrato-social
 
-## 🏛️ Architecture
+# Crie um ambiente virtual
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+# source .venv/bin/activate  # Linux/Mac
 
-The system follows a clear data flow:
-
-**User Request → Directive (SOP) → Agent Orchestration → Execution Scripts → Cloud Deliverables**
-
-### The 3 Layers Explained
-
-**Layer 1: Directives** (`directives/` folder)
-- Standard Operating Procedures written in Markdown
-- Define goals, inputs, tools to use, outputs, and edge cases
-- Natural language instructions, like you'd give a mid-level employee
-- Living documents that improve over time
-
-**Layer 2: Orchestration** (The AI Agent)
-- Intelligent routing and decision-making
-- Reads directives, calls execution tools in the right order
-- Handles errors, asks for clarification, updates directives with learnings
-- The glue between intent and execution
-
-**Layer 3: Execution** (`execution/` folder)
-- Deterministic Python scripts
-- Handle API calls, data processing, file operations, database interactions
-- Reliable, testable, fast - no probabilistic behavior
-- Well-commented and production-ready
-
-### Why This Works
-
-If the agent does everything itself, errors compound. 90% accuracy per step = 59% success over 5 steps. The solution? Push complexity into deterministic code. The agent focuses on decision-making, not implementation details.
-
-## 🔧 Setup Instructions
-
-### 1️⃣ Requirements
-
-You'll need:
-- Python 3.8+ installed
-- A code editor (VS Code, Cursor, etc.)
-- API keys for any services your directives/skills require
-
-### 2️⃣ Download the Template
-
-1. Download or clone this template folder
-2. Navigate to the folder in your terminal:
-   ```bash
-   cd path/to/Antigravity\ Template\ copy
-   ```
-
-### 3️⃣ Set Up Your Environment
-
-1. Create a `.env` file in the root directory:
-   ```bash
-   touch .env
-   ```
-
-2. Add your API keys and environment variables:
-   ```
-   FIRECRAWL_API_KEY=your_key_here
-   # Add other API keys as needed
-   ```
-
-3. Install any required Python dependencies for your execution scripts:
-   ```bash
-   pip install -r requirements.txt  # if you create one
-   ```
-
-### 4️⃣ Configure Your Agent
-
-1. Review `AGENTS.md` to understand the architecture
-2. Create your first directive in `directives/` (or use existing ones)
-3. Add execution scripts to `execution/` as needed
-4. Point your AI agent (Claude, GPT-4, etc.) to read `AGENTS.md` as its system instructions
-
-### 5️⃣ Start Building
-
-Your agent is now ready to:
-- Read directives from `directives/`
-- Execute scripts from `execution/`
-- Use skills from `SKILLS/`
-- Self-improve through the annealing loop
-
-## 🧪 What's Included
-
-### Core Files
-
-- **`AGENTS.md`** - The agent's operating manual and architecture guide
-- **`SKILLS/`** - Pre-built skills for common tasks:
-  - `brand-extractor/` - Extract brand identity from any website
-  - `brand-guidelines/` - Enforce consistent brand styling
-  - `frontend-design/` - Build beautiful web applications
-  - `skill-creator/` - Create new skills following best practices
-
-### Directory Structure
-
-```
-Antigravity Template/
-├── AGENTS.md              # Agent operating instructions
-├── SKILLS/                # Modular skill packages
-│   ├── brand-extractor/
-│   ├── brand-guidelines/
-│   ├── frontend-design/
-│   └── skill-creator/
-├── directives/            # Your SOPs (create this)
-├── execution/             # Your Python scripts (create this)
-├── .tmp/                  # Temporary/intermediate files (create this)
-└── .env                   # Environment variables (create this)
+# Instale as dependências
+pip install -r requirements.txt
 ```
 
-## 💡 Example Use Cases
+### 2. Configuração
 
-- **Automation Engineers**: Build reliable automation workflows that handle errors gracefully and improve over time
-- **AI Developers**: Create specialized agents with domain expertise without retraining models
-- **Product Teams**: Deploy AI agents that maintain consistency across complex multi-step processes
-- **Consultants**: Package your expertise into reusable skills that agents can execute reliably
-- **Startups**: Rapidly prototype AI-powered features with production-ready architecture from day one
+Crie um arquivo `.env` na raiz do projeto:
 
-## 🎓 Pro Tips
+```env
+OPENAI_API_KEY=sua_chave_openai_aqui
+MISTRAL_API_KEY=sua_chave_mistral_aqui
+SECRET_KEY=uma_chave_secreta_qualquer
+```
 
-1. **Start Small**: Begin with one directive and one execution script. Test the self-annealing loop before scaling up.
+> 💡 **Dica**: O Mistral AI é priorizado para extração de texto (gratuito). OpenAI é usado para imagens/OCR.
 
-2. **Use Skills Wisely**: The included skills demonstrate best practices. Study `skill-creator/SKILL_SkillCreator.md` before creating your own.
+### 3. Execução
 
-3. **Embrace the Annealing Loop**: When things break, let the agent fix the script, test it, and update the directive. The system gets stronger with each failure.
+```bash
+python app.py
+```
 
-4. **Keep Directives Lean**: Only include what the agent can't figure out on its own. Assume intelligence, provide context.
+Acesse: **http://127.0.0.1:5000**
 
-5. **Cloud-First Deliverables**: Store outputs in Google Sheets, Slides, or other cloud services. Local files are for processing only.
+## 📁 Estrutura do Projeto
 
-6. **Progressive Disclosure**: Skills use a 3-level loading system (metadata → SKILL.md → bundled resources). Keep context usage minimal.
+```
+├── app.py                    # Aplicação Flask principal
+├── contract_template.docx    # Template do contrato
+├── requirements.txt          # Dependências Python
+├── .env                      # Variáveis de ambiente (não versionado)
+├── execution/
+│   └── create_template.py    # Script para gerar o template
+├── templates/
+│   ├── landing.html          # Página inicial
+│   ├── upload.html           # Upload de documentos
+│   ├── form.html             # Formulário de revisão
+│   └── download.html         # Download do contrato
+├── static/
+│   └── style.css             # Estilos CSS
+└── .tmp/                     # Arquivos temporários (não versionado)
+```
+
+## 🔄 Fluxo de Uso
+
+1. **Início**: Selecione o número de sócios
+2. **Upload**: Envie documentos de identidade (RG, CNH, CIN) e da empresa (CNPJ)
+3. **Revisão**: Verifique e edite os dados extraídos automaticamente
+4. **Download**: Baixe o contrato social em formato Word
+
+## 🤖 Tecnologias de IA
+
+| Tipo de Documento | Tecnologia Usada |
+|-------------------|------------------|
+| PDF com texto (CNPJ) | Mistral AI (gratuito) |
+| PDF escaneado (RG/CNH) | OpenAI Vision |
+| Imagens (JPG/PNG) | OpenAI Vision |
+
+## 📦 Dependências Principais
+
+- **Flask** - Framework web
+- **OpenAI** - API de IA para extração
+- **Mistral AI** - API alternativa (gratuita)
+- **PyMuPDF** - Conversão de PDF para imagem
+- **python-docx / docxtpl** - Geração de documentos Word
+
+## 🛠️ Desenvolvimento
+
+### Regenerar o Template do Contrato
+
+```bash
+python execution/create_template.py
+```
+
+### Executar em Modo Debug
+
+```bash
+python app.py
+# O servidor reinicia automaticamente quando você salva alterações
+```
+
+## 📄 Licença
+
+Este projeto está licenciado sob a licença MIT.
+
+## 👨‍💻 Autor
+
+Desenvolvido por **Tiago Leite Wang**
 
 ---
 
-## 🚀 Want to Build & Sell AI Automations Like This?
-
-Join **The Build Room** and learn to build and sell AI automations - from $49 templates to $3K+ clients in 30 days.
-
-[→ Join The Build Room](https://www.skool.com/build-room)
-
----
-
-Built with ❤️ using Claude, Python, and the power of self-improving systems
-
-## 🤖 Contract Automation System
-
-A specific module for automating "Social de Constituição" contracts.
-
-### How to Use
-
-1.  **Configure**: Add your `OPENAI_API_KEY` to `.env`.
-2.  **Run**: `python app.py`
-3.  **Access**: Open `http://127.0.0.1:5000`
-4.  **Workflow**:
-    - Upload identity docs/old contracts.
-    - AI extracts data.
-    - Verify/Edit in the form.
-    - Download the generated `.docx`.
-
-### Structure
-- `app.py`: Main Flask application.
-- `templates/`: HTML files (Landing, Form, Download).
-- `static/`: CSS styles (Madruga Design System).
-- `contract_template.docx`: The master template.
+⭐ Se este projeto foi útil, considere dar uma estrela no repositório!
