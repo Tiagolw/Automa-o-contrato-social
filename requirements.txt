@@ -1,0 +1,16 @@
+# Core Flask Application
+flask>=3.0.0
+python-dotenv>=1.0.0
+
+# PDF Processing
+pypdf>=3.0.0
+pymupdf>=1.24.0
+pdf2image>=1.17.0
+
+# Document Generation
+python-docx>=1.0.0
+docxtpl>=0.16.0
+
+# AI/LLM Integration
+openai>=1.0.0
+mistralai>=1.0.0

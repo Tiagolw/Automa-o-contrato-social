@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Contrato Gerado com Sucesso - Madruga Contabilidade</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <h1>Sucesso!</h1>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card" style="text-align: center;">
+            <div style="color: var(--success); font-size: 4rem; margin-bottom: 20px;">✓</div>
+            <h2>Seu contrato está pronto</h2>
+            <p>O documento foi gerado com sucesso com base nas informações fornecidas.</p>
+
+            <div style="margin-top: 40px;">
+                <a href="{{ url_for('download_file', filename=filename) }}" class="btn btn-primary"
+                    style="padding: 16px 32px; font-size: 1.2rem;">
+                    📥 Baixar Contrato (.docx)
+                </a>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <a href="{{ url_for('landing') }}" class="btn btn-secondary">
+                    Criar Novo Contrato
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

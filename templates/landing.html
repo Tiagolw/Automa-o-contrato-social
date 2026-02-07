@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Madruga Contabilidade - Início</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <h1>Sistema de Automação Societária</h1>
+            <p>Eficiência e precisão na constituição de empresas</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card" style="text-align: center;">
+            <h2 style="margin-bottom: 20px;">Bem-vindo ao Gerador de Contrato Social</h2>
+            <p style="font-size: 1.1rem; color: var(--text-dark); margin-bottom: 30px;">
+                Este sistema utiliza Inteligência Artificial para extrair dados de documentos e preencher
+                automaticamente contratos de constituição.
+            </p>
+
+            <div style="display: flex; justify-content: center; gap: 40px; margin-bottom: 40px; text-align: left;">
+                <div style="max-width: 200px;">
+                    <h3 style="color: var(--accent-cyan-end);">1. Upload</h3>
+                    <p>Envie CNH, RG ou outros documentos.</p>
+                </div>
+                <div style="max-width: 200px;">
+                    <h3 style="color: var(--accent-cyan-end);">2. Revisão</h3>
+                    <p>Verifique e edite os dados extraídos.</p>
+                </div>
+                <div style="max-width: 200px;">
+                    <h3 style="color: var(--accent-cyan-end);">3. Download</h3>
+                    <p>Baixe o contrato pronto em Word.</p>
+                </div>
+            </div>
+
+            <hr style="margin: 30px 0; border-color: var(--border-color);">
+
+            <h3 style="margin-bottom: 20px;">Quantos sócios farão parte da empresa?</h3>
+
+            <form action="/upload" method="get" style="margin-top: 20px;">
+                <div
+                    style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 30px;">
+                    <button type="button" class="btn btn-secondary" onclick="decrement()">-</button>
+                    <input type="number" id="partners" name="partners" value="2" min="1" max="10"
+                        style="width: 80px; text-align: center; font-size: 1.5rem;" readonly>
+                    <button type="button" class="btn btn-secondary" onclick="increment()">+</button>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="font-size: 1.3rem; padding: 18px 40px;">
+                    Iniciar Novo Processo 🚀
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const input = document.getElementById('partners');
+
+        function increment() {
+            let val = parseInt(input.value);
+            if (val < 10) input.value = val + 1;
+        }
+
+        function decrement() {
+            let val = parseInt(input.value);
+            if (val > 1) input.value = val - 1;
+        }
+    </script>
+</body>
+
+</html>

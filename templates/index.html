@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Madruga Contabilidade - Automação de Contratos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <h1>Automação de Contrato Social</h1>
+            <p>Gere contratos de constituição em segundos com IA</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h2 style="text-align: center;">Começar Novo Contrato</h2>
+            <p style="text-align: center; color: var(--text-grey);">Faça o upload do documento (PDF ou Imagem) para
+                extrair os dados automaticamente.</p>
+
+            <form action="/extract" method="post" enctype="multipart/form-data" id="uploadForm">
+                <div class="upload-zone" id="dropZone">
+                    <p style="font-size: 1.2rem; color: var(--primary-color); font-weight: 600;">Arraste e solte seu
+                        arquivo aqui</p>
+                    <p>ou</p>
+                    <input type="file" name="document" id="fileInput" style="display: none;"
+                        accept=".pdf,.png,.jpg,.jpeg">
+                    <button type="button" class="btn btn-primary"
+                        onclick="document.getElementById('fileInput').click()">Selecionar Arquivo</button>
+                    <p id="fileName" style="margin-top: 10px; font-weight: 500;"></p>
+                </div>
+
+                <div style="text-align: center; margin-top: 30px;">
+                    <button type="submit" class="btn btn-primary" style="width: 100%; max-width: 300px;">Extrair Dados &
+                        Continuar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--accent-cyan-end)';
+            dropZone.style.background = '#f0f8ff';
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--border-color)';
+            dropZone.style.background = '#fafafa';
+        });
+
+        // Make the entire dropzone clickable
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Prevent bubbling up from the button to avoid double click
+        document.querySelector('#dropZone button').addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.click();
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--border-color)';
+            dropZone.style.background = '#fafafa';
+
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                updateFileName();
+            }
+        });
+
+        // Form Validation
+        document.getElementById('uploadForm').addEventListener('submit', (e) => {
+            if (fileInput.files.length === 0) {
+                e.preventDefault();
+                alert('Por favor, selecione um arquivo primeiro.');
+            }
+        });
+
+        fileInput.addEventListener('change', updateFileName);
+
+        function updateFileName() {
+            if (fileInput.files.length > 0) {
+                fileName.textContent = "Arquivo selecionado: " + fileInput.files[0].name;
+            }
+        }
+    </script>
+</body>
+
+</html>

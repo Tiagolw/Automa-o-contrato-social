@@ -1,0 +1,25 @@
+# Temporary files
+.tmp/
+__pycache__/
+*.pyc
+
+# Environment variables and secrets
+.env
+credentials.json
+token.json
+client_secret.json
+
+# IDE settings
+.vscode/
+.idea/
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# macOS
+.DS_Store
+
+# Reference documents (private)
+Reference/

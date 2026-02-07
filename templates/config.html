@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Configuração - Madruga Contabilidade</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <h1>Configuração da Sociedade</h1>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card" style="max-width: 600px;">
+            <h2 style="text-align: center;">Quantos sócios farão parte da empresa?</h2>
+
+            <form action="/upload" method="get" style="margin-top: 30px; text-align: center;">
+                <div class="form-group">
+                    <label for="partners" style="font-size: 1.2rem;">Número de Sócios:</label>
+                    <div style="display: flex; justify-content: center; align-items: center; gap: 15px;">
+                        <button type="button" class="btn btn-secondary" onclick="decrement()">-</button>
+                        <input type="number" id="partners" name="partners" value="2" min="1" max="10"
+                            style="width: 80px; text-align: center; font-size: 1.5rem;" readonly>
+                        <button type="button" class="btn btn-secondary" onclick="increment()">+</button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="margin-top: 20px; width: 100%;">Continuar para
+                    Documentos</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const input = document.getElementById('partners');
+
+        function increment() {
+            let val = parseInt(input.value);
+            if (val < 10) input.value = val + 1;
+        }
+
+        function decrement() {
+            let val = parseInt(input.value);
+            if (val > 1) input.value = val - 1;
+        }
+    </script>
+</body>
+
+</html>

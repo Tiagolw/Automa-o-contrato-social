@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Dados do Contrato - Madruga Contabilidade</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <h1>Verificar e Editar Dados</h1>
+        </div>
+    </header>
+
+    <div class="container">
+        <form action="/generate" method="post">
+
+            <!-- Loop SÓCIOS -->
+            {% for p in context.partners %}
+            <div class="card">
+                <h2>👤 Sócio {{ loop.index }}</h2>
+
+                <div class="form-group">
+                    <label>Nome Completo</label>
+                    <input type="text" name="partner_{{ p.id }}_name" value="{{ p.get('name', '') }}">
+                </div>
+                <div class="form-group">
+                    <label>Nacionalidade</label>
+                    <input type="text" name="partner_{{ p.id }}_nationality" value="{{ p.get('nationality', '') }}">
+                </div>
+                <div class="form-group">
+                    <label>Estado Civil</label>
+                    <input type="text" name="partner_{{ p.id }}_civil_state" value="{{ p.get('civil_state', '') }}">
+                </div>
+                <!-- Show Regime only if needed, or always show -->
+                <div class="form-group">
+                    <label>Regime de Bens (se casado)</label>
+                    <input type="text" name="partner_{{ p.id }}_regime" value="{{ p.get('regime', '') }}">
+                </div>
+                <div class="form-group">
+                    <label>Profissão</label>
+                    <input type="text" name="partner_{{ p.id }}_profession" value="{{ p.get('profession', '') }}">
+                </div>
+                <div class="form-group">
+                    <label>Data de Nascimento</label>
+                    <input type="text" name="partner_{{ p.id }}_birth_date" value="{{ p.get('birth_date', '') }}">
+                </div>
+                <div class="form-group">
+                    <label>CPF</label>
+                    <input type="text" name="partner_{{ p.id }}_cpf" value="{{ p.get('cpf', '') }}">
+                </div>
+                <div class="form-group">
+                    <label>Endereço Completo</label>
+                    <input type="text" name="partner_{{ p.id }}_address" value="{{ p.get('address', '') }}">
+                </div>
+
+                <h3>Participação</h3>
+                <div class="form-group">
+                    <label>Quantidade de Quotas</label>
+                    <input type="number" name="partner_{{ p.id }}_quotas" value="{{ p.get('quotas', '') }}">
+                </div>
+                <div class="form-group">
+                    <label>Valor em R$</label>
+                    <input type="text" name="partner_{{ p.id }}_amount" value="{{ p.get('amount', '') }}">
+                </div>
+                <div class="form-group">
+                    <label>% Participação</label>
+                    <input type="text" name="partner_{{ p.id }}_percent" value="{{ p.get('percent', '') }}">
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Dados da Empresa -->
+            <div class="card">
+                <h2>🏢 Dados da Empresa</h2>
+                <div class="form-group">
+                    <label>Razão Social</label>
+                    <input type="text" name="company_name" value="{{ context.company.get('company_name', '') }}">
+                </div>
+                <div class="form-group">
+                    <label>Endereço da Sede</label>
+                    <input type="text" name="company_address" value="{{ context.company.get('company_address', '') }}">
+                </div>
+                <div class="form-group">
+                    <label>Objeto Social (Resumo)</label>
+                    <textarea name="company_object" rows="4">{{ context.company.get('company_object', '') }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Lista de Atividades (CNAEs)</label>
+                    <textarea name="company_cnae_list"
+                        rows="6">{{ context.company.get('company_cnae_list', '') }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Data de Início</label>
+                    <input type="text" name="start_date" value="{{ context.company.get('start_date', '') }}">
+                </div>
+            </div>
+
+            <!-- Capital e Foro -->
+            <div class="card">
+                <h2>💰 Capital e Foro</h2>
+                <div class="form-group">
+                    <label>Capital Social Total (Moeda)</label>
+                    <input type="text" name="capital_currency"
+                        value="{{ context.company.get('capital_currency', '') }}">
+                </div>
+                <div class="form-group">
+                    <label>Capital Social Total (Por Extenso)</label>
+                    <input type="text" name="capital_amount_text"
+                        value="{{ context.company.get('capital_amount_text', '') }}">
+                </div>
+                <div class="form-group">
+                    <label>Total de Quotas</label>
+                    <input type="text" name="total_quotas" value="{{ context.company.get('total_quotas', '') }}">
+                </div>
+                <div class="form-group">
+                    <label>Valor Unitário da Quota</label>
+                    <input type="text" name="quota_value" value="{{ context.company.get('quota_value', '') }}">
+                </div>
+                <div class="form-group">
+                    <label>Cidade do Foro</label>
+                    <input type="text" name="forum_city" value="{{ context.company.get('forum_city', '') }}">
+                </div>
+                <div class="form-group">
+                    <label>Data de Assinatura</label>
+                    <input type="text" name="signature_date" value="{{ context.company.get('signature_date', '') }}">
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 60px;">
+                <button type="submit" class="btn btn-primary" style="font-size: 1.2rem; padding: 16px 32px;">Gerar
+                    Contrato DOCX</button>
+            </div>
+        </form>
+    </div>
+</body>
+
+</html>

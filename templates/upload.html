@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Upload de Documentos - Madruga Contabilidade</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .partner-section {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            margin-bottom: 30px;
+            background: #fff;
+        }
+
+        .partner-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .file-status {
+            font-size: 0.9rem;
+            color: var(--success);
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <h1>Envio de Documentos</h1>
+            <p>Envie os documentos para extração automática ou pule para preencher manualmente.</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <form action="/process" method="post" enctype="multipart/form-data" id="multistepForm">
+            <input type="hidden" name="partner_count" value="{{ partner_count }}">
+
+            {% for i in range(partner_count) %}
+            <div class="partner-section">
+                <div class="partner-header">
+                    <h2>Sócio {{ i + 1 }}</h2>
+                    <span class="file-status" id="status-{{ i }}">Arquivo Selecionado ✓</span>
+                </div>
+
+                <div class="upload-zone" id="dropZone-{{ i }}"
+                    onclick="document.getElementById('file-{{ i }}').click()">
+                    <p>Arraste solte o documento do Sócio {{ i + 1 }} aqui</p>
+                    <p style="font-size: 0.8rem; color: var(--text-grey);">(RG, CNH, etc.)</p>
+                    <input type="file" name="files_partner_{{ i }}[]" id="file-{{ i }}" style="display: none;" multiple
+                        onchange="updateStatus({{ i }})">
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Company Docs (Optional) -->
+            <div class="partner-section">
+                <div class="partner-header">
+                    <h2>Documentos da Empresa (Opcional)</h2>
+                    <span class="file-status" id="status-company">Arquivo Selecionado ✓</span>
+                </div>
+                <div class="upload-zone" id="dropZone-company"
+                    onclick="document.getElementById('file-company').click()">
+                    <p>Contrato Social anterior, Cartão CNPJ, etc.</p>
+                    <input type="file" name="files_company[]" id="file-company" style="display: none;" multiple
+                        onchange="updateStatus('company')">
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 50px;">
+                <button type="submit" class="btn btn-primary" style="padding: 18px 40px; font-size: 1.2rem;">
+                    Processar e Gerar Formulário ->
+                </button>
+                <p style="margin-top: 10px; color: var(--text-grey); font-size: 0.9rem;">
+                    Nota: Se não enviar documentos, o formulário será gerado em branco.
+                </p>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function updateStatus(id) {
+            const input = document.getElementById('file-' + id);
+            const status = document.getElementById('status-' + id);
+            const zone = document.getElementById('dropZone-' + id);
+
+            if (input.files.length > 0) {
+                status.style.display = 'block';
+                status.textContent = input.files.length + " arquivo(s) selecionado(s)";
+                zone.style.borderColor = 'var(--success)';
+                zone.style.background = '#f0fff4';
+            }
+        }
+
+        // Add drag and drop logic for all zones
+        const zones = document.querySelectorAll('.upload-zone');
+        zones.forEach(zone => {
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.style.borderColor = 'var(--accent-cyan-end)';
+                zone.style.background = '#f0f8ff';
+            });
+            zone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                zone.style.borderColor = 'var(--border-color)';
+                zone.style.background = '#fafafa';
+            });
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const inputId = zone.id.replace('dropZone-', 'file-');
+                const updateId = inputId.replace('file-', '');
+                const input = document.getElementById(inputId);
+
+                if (e.dataTransfer.files.length) {
+                    input.files = e.dataTransfer.files;
+                    updateStatus(updateId);
+                }
+                zone.style.borderColor = 'var(--success)';
+                zone.style.background = '#f0fff4';
+            });
+        });
+    </script>
+</body>
+
+</html>
