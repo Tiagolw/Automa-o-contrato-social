@@ -10,9 +10,20 @@ import base64
 
 load_dotenv()
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = '.tmp'
-app.config['SECRET_KEY'] = 'dev_key_very_secret' # Required for session
+# Get the directory where app.py is located
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+app = Flask(__name__, 
+            template_folder=os.path.join(BASE_DIR, 'templates'),
+            static_folder=os.path.join(BASE_DIR, 'static'))
+
+# Use /tmp for serverless environments (Vercel), .tmp for local
+if os.environ.get('VERCEL'):
+    app.config['UPLOAD_FOLDER'] = '/tmp'
+else:
+    app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, '.tmp')
+    
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_very_secret')
 
 # Ensure tmp folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -410,7 +421,7 @@ def generate():
         
         print(f"[DEBUG] Company data: {company_data}")
         
-        template_path = 'contract_template.docx'
+        template_path = os.path.join(BASE_DIR, 'contract_template.docx')
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], 'generated_contract.docx')
         
         print(f"[DEBUG] Template path: {template_path}")
