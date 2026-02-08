@@ -15,5 +15,8 @@ docxtpl>=0.16.0
 openai>=1.0.0
 mistralai>=1.0.0
 
+# Database
+supabase>=2.0.0
+
 # Production Server
 gunicorn>=21.0.0

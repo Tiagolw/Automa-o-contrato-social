@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Madruga Contabilidade</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .contract-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-left: 4px solid var(--accent-cyan-end);
+        }
+
+        .contract-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        .contract-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .contract-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin: 0;
+        }
+
+        .contract-status {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .status-draft {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .contract-meta {
+            font-size: 0.85rem;
+            color: var(--text-grey);
+            margin-bottom: 15px;
+        }
+
+        .contract-meta p {
+            margin: 5px 0;
+        }
+
+        .contract-partners {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .partner-badge {
+            background: var(--bg-light);
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            color: var(--text-dark);
+        }
+
+        .contract-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .contract-actions .btn {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            font-size: 0.9rem;
+        }
+
+        .btn-edit {
+            background: var(--bg-light);
+            color: var(--primary-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-delete {
+            background: #fff5f5;
+            color: var(--error);
+            border: 1px solid #ffcdd2;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-grey);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        /* New Contract Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal h2 {
+            margin-bottom: 20px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-grey);
+        }
+
+        .partner-selector {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .partner-selector input {
+            width: 80px;
+            text-align: center;
+            font-size: 2rem;
+            padding: 15px;
+            border-radius: var(--radius-md);
+        }
+
+        .partner-selector .btn {
+            width: 50px;
+            height: 50px;
+            padding: 0;
+            font-size: 1.5rem;
+            border-radius: 50%;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .search-box {
+            padding: 12px 20px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            width: 300px;
+            font-size: 1rem;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--white);
+            border-radius: var(--radius-md);
+            padding: 20px 30px;
+            box-shadow: var(--shadow);
+            flex: 1;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .stat-label {
+            color: var(--text-grey);
+            font-size: 0.9rem;
+        }
+
+        /* Filter Buttons */
+        .filter-btn {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            background: var(--white);
+            color: var(--text-grey);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--accent-cyan-end);
+            color: var(--accent-cyan-end);
+        }
+
+        .filter-btn.active {
+            background: var(--primary-color);
+            color: var(--white);
+            border-color: var(--primary-color);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 900px) {
+            .header-actions {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .header-actions>div {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <h1>📋 Dashboard de Contratos</h1>
+            <p>Gerencie seus contratos sociais</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Stats Row -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-number">{{ contracts|length }}</div>
+                <div class="stat-label">Total de Contratos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ drafts_count }}</div>
+                <div class="stat-label">Rascunhos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ completed_count }}</div>
+                <div class="stat-label">Finalizados</div>
+            </div>
+        </div>
+
+        <!-- Header Actions -->
+        <div class="header-actions">
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <input type="text" class="search-box" placeholder="🔍 Buscar contratos..." id="searchInput"
+                    onkeyup="filterContracts()">
+
+                <!-- Filter Buttons -->
+                <div class="filter-buttons" style="display: flex; gap: 8px;">
+                    <button class="btn filter-btn active" data-filter="all" onclick="setFilter('all')">Todos</button>
+                    <button class="btn filter-btn" data-filter="completed" onclick="setFilter('completed')">✅
+                        Finalizados</button>
+                    <button class="btn filter-btn" data-filter="draft" onclick="setFilter('draft')">📝
+                        Rascunhos</button>
+                </div>
+
+                <!-- Sort Dropdown -->
+                <select id="sortSelect" class="search-box" style="width: auto; padding: 10px 15px;"
+                    onchange="sortContracts()">
+                    <option value="date-desc">📅 Mais recentes</option>
+                    <option value="date-asc">📅 Mais antigos</option>
+                    <option value="name-asc">🔤 A-Z</option>
+                    <option value="name-desc">🔤 Z-A</option>
+                </select>
+            </div>
+
+            <button class="btn btn-primary" onclick="openModal()" style="padding: 14px 28px;">
+                ➕ Novo Contrato
+            </button>
+        </div>
+
+        <!-- Contracts Grid -->
+        <div class="dashboard-container" id="contractsGrid">
+            {% if contracts %}
+            {% for contract in contracts %}
+            <div class="contract-card" data-name="{{ contract.name }}" data-status="{{ contract.effective_status }}"
+                data-date="{{ contract.created_at }}">
+                <div class="contract-card-header">
+                    <h3 class="contract-title">{{ contract.name or 'Contrato sem nome' }}</h3>
+                    <span
+                        class="contract-status {{ 'status-completed' if contract.effective_status == 'completed' else 'status-draft' }}">
+                        {{ 'Finalizado' if contract.effective_status == 'completed' else 'Rascunho' }}
+                    </span>
+                </div>
+
+                <div class="contract-meta">
+                    <p>📅 Criado em: {{ contract.created_at[:10] if contract.created_at else 'N/A' }}</p>
+                    <p>🔄 Atualizado: {{ contract.updated_at[:10] if contract.updated_at else 'N/A' }}</p>
+                </div>
+
+                {% if contract.partners %}
+                <div class="contract-partners">
+                    {% for partner in contract.partners[:3] %}
+                    <span class="partner-badge">👤 {{ partner.name or 'Sócio' }}</span>
+                    {% endfor %}
+                    {% if contract.partners|length > 3 %}
+                    <span class="partner-badge">+{{ contract.partners|length - 3 }}</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="contract-actions">
+                    <a href="{{ url_for('edit_contract', id=contract.id) }}" class="btn btn-edit">✏️ Editar</a>
+                    <a href="{{ url_for('download_contract', id=contract.id) }}" class="btn btn-primary">📥 Baixar</a>
+                    <button class="btn btn-delete" onclick="deleteContract('{{ contract.id }}')">🗑️</button>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state" style="grid-column: 1 / -1;">
+                <div class="empty-state-icon">📄</div>
+                <h2>Nenhum contrato ainda</h2>
+                <p>Clique em "Novo Contrato" para começar</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- New Contract Modal -->
+    <div class="modal-overlay" id="newContractModal">
+        <div class="modal">
+            <h2>🆕 Novo Contrato Social</h2>
+            <p style="color: var(--text-grey);">Quantos sócios farão parte da empresa?</p>
+
+            <form action="{{ url_for('upload') }}" method="get">
+                <div class="partner-selector">
+                    <button type="button" class="btn btn-secondary" onclick="decrementPartners()">−</button>
+                    <input type="number" id="partnerCount" name="partners" value="2" min="1" max="10" readonly>
+                    <button type="button" class="btn btn-secondary" onclick="incrementPartners()">+</button>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 16px; font-size: 1.1rem;">
+                    Iniciar Contrato 🚀
+                </button>
+            </form>
+
+            <button class="btn btn-secondary" onclick="closeModal()" style="margin-top: 15px; width: 100%;">
+                Cancelar
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script>
+        // Check for server-side flash messages and show them as toasts
+        document.addEventListener('DOMContentLoaded', function () {
+            {% with messages = get_flashed_messages(with_categories = true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            showToast("{{ message }}", "{{ 'error' if category == 'error' else 'success' }}");
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+        });
+
+        // Modal functions
+        function openModal() {
+            document.getElementById('newContractModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('newContractModal').classList.remove('active');
+        }
+
+        // Close modal on overlay click
+        document.getElementById('newContractModal').addEventListener('click', function (e) {
+            if (e.target === this) closeModal();
+        });
+
+        // Partner counter
+        function incrementPartners() {
+            const input = document.getElementById('partnerCount');
+            if (parseInt(input.value) < 10) input.value = parseInt(input.value) + 1;
+        }
+
+        function decrementPartners() {
+            const input = document.getElementById('partnerCount');
+            if (parseInt(input.value) > 1) input.value = parseInt(input.value) - 1;
+        }
+
+        // Current filter state
+        let currentFilter = 'all';
+
+        // Set filter and update UI
+        function setFilter(filter) {
+            currentFilter = filter;
+
+            // Update button states
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+
+            // Apply filter
+            applyFiltersAndSort();
+        }
+
+        // Sort contracts
+        function sortContracts() {
+            applyFiltersAndSort();
+        }
+
+        // Combined filter and sort function
+        function applyFiltersAndSort() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const sortValue = document.getElementById('sortSelect').value;
+            const grid = document.getElementById('contractsGrid');
+            const cards = Array.from(grid.querySelectorAll('.contract-card'));
+
+            // Sort cards
+            cards.sort((a, b) => {
+                if (sortValue === 'name-asc') {
+                    return (a.dataset.name || '').localeCompare(b.dataset.name || '');
+                } else if (sortValue === 'name-desc') {
+                    return (b.dataset.name || '').localeCompare(a.dataset.name || '');
+                } else if (sortValue === 'date-asc') {
+                    return (a.dataset.date || '').localeCompare(b.dataset.date || '');
+                } else { // date-desc (default)
+                    return (b.dataset.date || '').localeCompare(a.dataset.date || '');
+                }
+            });
+
+            // Re-append sorted cards and apply filters
+            cards.forEach(card => {
+                const name = (card.dataset.name || '').toLowerCase();
+                const status = card.dataset.status;
+
+                // Check search filter
+                const matchesSearch = name.includes(searchTerm);
+
+                // Check status filter
+                const matchesStatus = currentFilter === 'all' || status === currentFilter;
+
+                // Show/hide based on both filters
+                card.style.display = (matchesSearch && matchesStatus) ? 'block' : 'none';
+
+                // Re-append to maintain sort order
+                grid.appendChild(card);
+            });
+        }
+
+        // Search/filter contracts (triggers combined function)
+        function filterContracts() {
+            applyFiltersAndSort();
+        }
+
+        // Delete contract
+        function deleteContract(id) {
+            if (confirm('Tem certeza que deseja excluir este contrato?')) {
+                fetch(`/api/contracts/${id}`, { method: 'DELETE' })
+                    .then(response => {
+                        if (response.ok) {
+                            location.reload();
+                        } else {
+                            showToast('Erro ao excluir contrato', 'error');
+                        }
+                    })
+                    .catch(() => showToast('Erro ao excluir contrato', 'error'));
+            }
+        }
+
+        // Toast notification
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+            toast.innerHTML = `
+                <span class="toast-icon">${icons[type]}</span>
+                <span class="toast-message">${message}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('removing');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeModal();
+            if (e.key === 'n' && e.ctrlKey) {
+                e.preventDefault();
+                openModal();
+            }
+        });
+    </script>
+</body>
+
+</html>

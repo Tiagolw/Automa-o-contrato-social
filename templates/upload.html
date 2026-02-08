@@ -50,13 +50,26 @@
 
                 <div class="upload-zone" id="dropZone-{{ i }}"
                     onclick="document.getElementById('file-{{ i }}').click()">
-                    <p>Arraste solte o documento do Sócio {{ i + 1 }} aqui</p>
-                    <p style="font-size: 0.8rem; color: var(--text-grey);">(RG, CNH, etc.)</p>
+                    <p>📄 Documento de Identidade do Sócio {{ i + 1 }}</p>
+                    <p style="font-size: 0.8rem; color: var(--text-grey);">(CNH, CIN, RG)</p>
                     <input type="file" name="files_partner_{{ i }}[]" id="file-{{ i }}" style="display: none;" multiple
                         onchange="updateStatus({{ i }})">
                 </div>
+
+                <!-- Address Proof Zone -->
+                <div class="upload-zone" id="dropZone-addr-{{ i }}"
+                    onclick="document.getElementById('file-addr-{{ i }}').click()"
+                    style="margin-top: 15px; padding: 40px;">
+                    <p>📍 Comprovante de Endereço (Opcional)</p>
+                    <p style="font-size: 0.8rem; color: var(--text-grey);">(Conta de luz, água, telefone, banco)</p>
+                    <input type="file" name="files_address_{{ i }}[]" id="file-addr-{{ i }}" style="display: none;"
+                        onchange="updateStatus('addr-{{ i }}')">
+                </div>
+                <span class="file-status" id="status-addr-{{ i }}" style="margin-top: 5px;">Comprovante Selecionado
+                    ✓</span>
             </div>
             {% endfor %}
+
 
             <!-- Company Docs (Optional) -->
             <div class="partner-section">
@@ -73,17 +86,62 @@
             </div>
 
             <div style="text-align: center; margin-bottom: 50px;">
-                <button type="submit" class="btn btn-primary" style="padding: 18px 40px; font-size: 1.2rem;">
-                    Processar e Gerar Formulário ->
+                <!-- Success Banner (hidden by default) -->
+                <div id="successBanner" class="success-banner"
+                    style="display: none; max-width: 500px; margin: 0 auto 20px auto;">
+                    <span class="success-banner-icon">✅</span>
+                    <span class="success-banner-text" id="bannerText">Documentos selecionados com sucesso!</span>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="submitBtn"
+                    style="padding: 18px 40px; font-size: 1.2rem;">
+                    <span class="btn-text">Processar e Gerar Formulário →</span>
                 </button>
-                <p style="margin-top: 10px; color: var(--text-grey); font-size: 0.9rem;">
+                <div id="progressContainer" class="progress-bar-container"
+                    style="display: none; max-width: 300px; margin: 15px auto 0;">
+                    <div class="progress-bar progress-bar-indeterminate"></div>
+                </div>
+                <p id="statusText" style="margin-top: 10px; color: var(--text-grey); font-size: 0.9rem;">
                     Nota: Se não enviar documentos, o formulário será gerado em branco.
                 </p>
             </div>
         </form>
     </div>
 
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <script>
+        // Toast notification system
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+
+            const icons = {
+                success: '✅',
+                error: '❌',
+                info: 'ℹ️'
+            };
+
+            toast.innerHTML = `
+                <span class="toast-icon">${icons[type]}</span>
+                <span class="toast-message">${message}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+            `;
+
+            container.appendChild(toast);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                toast.classList.add('removing');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // Track total files selected
+        let totalFilesSelected = 0;
+
         function updateStatus(id) {
             const input = document.getElementById('file-' + id);
             const status = document.getElementById('status-' + id);
@@ -94,8 +152,48 @@
                 status.textContent = input.files.length + " arquivo(s) selecionado(s)";
                 zone.style.borderColor = 'var(--success)';
                 zone.style.background = '#f0fff4';
+
+                // Show toast notification
+                showToast(`${input.files.length} arquivo(s) adicionado(s) para ${id === 'company' ? 'Empresa' : 'Sócio ' + (parseInt(id) + 1)}`, 'success');
+
+                // Update total and show banner
+                updateTotalFiles();
             }
         }
+
+        function updateTotalFiles() {
+            const allInputs = document.querySelectorAll('input[type="file"]');
+            let total = 0;
+            allInputs.forEach(input => {
+                total += input.files.length;
+            });
+
+            if (total > 0) {
+                const banner = document.getElementById('successBanner');
+                const bannerText = document.getElementById('bannerText');
+                banner.style.display = 'flex';
+                bannerText.textContent = `${total} documento(s) pronto(s) para processamento`;
+            }
+        }
+
+        // Form submission with loading state
+        document.getElementById('multistepForm').addEventListener('submit', function (e) {
+            const submitBtn = document.getElementById('submitBtn');
+            const btnText = submitBtn.querySelector('.btn-text');
+            const progressContainer = document.getElementById('progressContainer');
+            const statusText = document.getElementById('statusText');
+
+            // Activate loading state
+            submitBtn.classList.add('btn-loading');
+            btnText.textContent = 'Processando...';
+            btnText.style.opacity = '1';
+            progressContainer.style.display = 'block';
+            statusText.textContent = 'Extraindo dados com IA... isso pode levar alguns segundos.';
+            statusText.style.color = 'var(--accent-cyan-end)';
+
+            // Show info toast
+            showToast('Processando documentos com IA...', 'info');
+        });
 
         // Add drag and drop logic for all zones
         const zones = document.querySelectorAll('.upload-zone');

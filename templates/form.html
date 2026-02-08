@@ -15,10 +15,11 @@
     </header>
 
     <div class="container">
-        <form action="/generate" method="post">
+        <form action="{{ url_for('generate') }}" method="post">
+            <input type="hidden" name="contract_id" value="{{ contract_id }}">
 
             <!-- Loop SÓCIOS -->
-            {% for p in context.partners %}
+            {% for p in partners %}
             <div class="card">
                 <h2>👤 Sócio {{ loop.index }}</h2>
 
@@ -77,24 +78,23 @@
                 <h2>🏢 Dados da Empresa</h2>
                 <div class="form-group">
                     <label>Razão Social</label>
-                    <input type="text" name="company_name" value="{{ context.company.get('company_name', '') }}">
+                    <input type="text" name="company_name" value="{{ company.get('company_name', '') }}">
                 </div>
                 <div class="form-group">
                     <label>Endereço da Sede</label>
-                    <input type="text" name="company_address" value="{{ context.company.get('company_address', '') }}">
+                    <input type="text" name="company_address" value="{{ company.get('company_address', '') }}">
                 </div>
                 <div class="form-group">
                     <label>Objeto Social (Resumo)</label>
-                    <textarea name="company_object" rows="4">{{ context.company.get('company_object', '') }}</textarea>
+                    <textarea name="company_object" rows="4">{{ company.get('company_object', '') }}</textarea>
                 </div>
                 <div class="form-group">
                     <label>Lista de Atividades (CNAEs)</label>
-                    <textarea name="company_cnae_list"
-                        rows="6">{{ context.company.get('company_cnae_list', '') }}</textarea>
+                    <textarea name="company_cnae_list" rows="6">{{ company.get('company_cnae_list', '') }}</textarea>
                 </div>
                 <div class="form-group">
                     <label>Data de Início</label>
-                    <input type="text" name="start_date" value="{{ context.company.get('start_date', '') }}">
+                    <input type="text" name="start_date" value="{{ company.get('start_date', '') }}">
                 </div>
             </div>
 
@@ -103,38 +103,105 @@
                 <h2>💰 Capital e Foro</h2>
                 <div class="form-group">
                     <label>Capital Social Total (Moeda)</label>
-                    <input type="text" name="capital_currency"
-                        value="{{ context.company.get('capital_currency', '') }}">
+                    <input type="text" name="capital_currency" value="{{ company.get('capital_currency', '') }}">
                 </div>
                 <div class="form-group">
                     <label>Capital Social Total (Por Extenso)</label>
-                    <input type="text" name="capital_amount_text"
-                        value="{{ context.company.get('capital_amount_text', '') }}">
+                    <input type="text" name="capital_amount_text" value="{{ company.get('capital_amount_text', '') }}">
                 </div>
                 <div class="form-group">
                     <label>Total de Quotas</label>
-                    <input type="text" name="total_quotas" value="{{ context.company.get('total_quotas', '') }}">
+                    <input type="text" name="total_quotas" value="{{ company.get('total_quotas', '') }}">
                 </div>
                 <div class="form-group">
                     <label>Valor Unitário da Quota</label>
-                    <input type="text" name="quota_value" value="{{ context.company.get('quota_value', '') }}">
+                    <input type="text" name="quota_value" value="{{ company.get('quota_value', '') }}">
                 </div>
                 <div class="form-group">
                     <label>Cidade do Foro</label>
-                    <input type="text" name="forum_city" value="{{ context.company.get('forum_city', '') }}">
+                    <input type="text" name="forum_city" value="{{ company.get('forum_city', '') }}">
                 </div>
                 <div class="form-group">
                     <label>Data de Assinatura</label>
-                    <input type="text" name="signature_date" value="{{ context.company.get('signature_date', '') }}">
+                    <input type="text" name="signature_date" value="{{ company.get('signature_date', '') }}">
                 </div>
             </div>
 
             <div style="text-align: center; margin-bottom: 60px;">
-                <button type="submit" class="btn btn-primary" style="font-size: 1.2rem; padding: 16px 32px;">Gerar
-                    Contrato DOCX</button>
+                <button type="submit" class="btn btn-primary" id="generateBtn"
+                    style="font-size: 1.2rem; padding: 16px 32px;">
+                    <span class="btn-text">Gerar Contrato DOCX</span>
+                </button>
+                <div id="progressContainer" class="progress-bar-container"
+                    style="display: none; max-width: 300px; margin: 15px auto 0;">
+                    <div class="progress-bar progress-bar-indeterminate"></div>
+                </div>
+                <p id="statusText" style="margin-top: 10px; color: var(--text-grey); font-size: 0.9rem; display: none;">
+                </p>
             </div>
         </form>
     </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script>
+        // Toast notification system
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+
+            const icons = {
+                success: '✅',
+                error: '❌',
+                info: 'ℹ️'
+            };
+
+            toast.innerHTML = `
+                <span class="toast-icon">${icons[type]}</span>
+                <span class="toast-message">${message}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('removing');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // Show flash messages from backend
+        document.addEventListener('DOMContentLoaded', function () {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        showToast('{{ message }}', '{{ category if category != "message" else "info" }}');
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+
+        // Form submission with loading state
+        document.querySelector('form').addEventListener('submit', function (e) {
+            const submitBtn = document.getElementById('generateBtn');
+            const btnText = submitBtn.querySelector('.btn-text');
+            const progressContainer = document.getElementById('progressContainer');
+            const statusText = document.getElementById('statusText');
+
+            // Activate loading state
+            submitBtn.classList.add('btn-loading');
+            btnText.innerHTML = '<span class="loading-spinner"></span> Gerando contrato...';
+            btnText.style.opacity = '1';
+            progressContainer.style.display = 'block';
+            statusText.style.display = 'block';
+            statusText.textContent = 'Montando o documento Word...';
+            statusText.style.color = 'var(--accent-cyan-end)';
+
+            showToast('Gerando contrato DOCX...', 'info');
+        });
+    </script>
 </body>
 
 </html>

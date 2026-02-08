@@ -21,19 +21,46 @@
             <p>O documento foi gerado com sucesso com base nas informações fornecidas.</p>
 
             <div style="margin-top: 40px;">
-                <a href="{{ url_for('download_file', filename=filename) }}" class="btn btn-primary"
+                <a href="{{ url_for('download_file', filename=filename, name=display_name) }}" class="btn btn-primary"
                     style="padding: 16px 32px; font-size: 1.2rem;">
-                    📥 Baixar Contrato (.docx)
+                    📥 Baixar Contrato
                 </a>
             </div>
 
             <div style="margin-top: 20px;">
-                <a href="{{ url_for('landing') }}" class="btn btn-secondary">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">
                     Criar Novo Contrato
                 </a>
             </div>
         </div>
     </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script>
+        // Toast notification
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <span class="toast-icon">✅</span>
+                <span class="toast-message">${message}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('removing');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // Show success toast on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            showToast('Contrato gerado com sucesso! Clique para baixar.', 'success');
+        });
+    </script>
 </body>
 
 </html>
