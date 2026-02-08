@@ -3,37 +3,17 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Upload de Documentos - Madruga Contabilidade</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload de Documentos - Automação de Contratos</title>
+    <meta name="description" content="Envie documentos para extração automática de dados">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        .partner-section {
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 20px;
-            margin-bottom: 30px;
-            background: #fff;
-        }
-
-        .partner-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .file-status {
-            font-size: 0.9rem;
-            color: var(--success);
-            display: none;
-        }
-    </style>
 </head>
 
 <body>
     <header>
         <div class="container">
-            <h1>Envio de Documentos</h1>
-            <p>Envie os documentos para extração automática ou pule para preencher manualmente.</p>
+            <h1>📤 Envio de Documentos</h1>
+            <p>Envie os documentos para extração automática ou pule para preencher manualmente</p>
         </div>
     </header>
 
@@ -44,65 +24,64 @@
             {% for i in range(partner_count) %}
             <div class="partner-section">
                 <div class="partner-header">
-                    <h2>Sócio {{ i + 1 }}</h2>
-                    <span class="file-status" id="status-{{ i }}">Arquivo Selecionado ✓</span>
+                    <h2>👤 Sócio {{ i + 1 }}</h2>
+                    <span class="file-status" id="status-{{ i }}">Arquivo selecionado ✓</span>
                 </div>
 
                 <div class="upload-zone" id="dropZone-{{ i }}"
                     onclick="document.getElementById('file-{{ i }}').click()">
-                    <p>📄 Documento de Identidade do Sócio {{ i + 1 }}</p>
-                    <p style="font-size: 0.8rem; color: var(--text-grey);">(CNH, CIN, RG)</p>
+                    <p>📄 Documento de Identidade</p>
+                    <p>(CNH, CIN, RG - Arraste ou clique para enviar)</p>
                     <input type="file" name="files_partner_{{ i }}[]" id="file-{{ i }}" style="display: none;" multiple
                         onchange="updateStatus({{ i }})">
                 </div>
 
-                <!-- Address Proof Zone -->
                 <div class="upload-zone" id="dropZone-addr-{{ i }}"
-                    onclick="document.getElementById('file-addr-{{ i }}').click()"
-                    style="margin-top: 15px; padding: 40px;">
+                    onclick="document.getElementById('file-addr-{{ i }}').click()" style="margin-top: 16px;">
                     <p>📍 Comprovante de Endereço (Opcional)</p>
-                    <p style="font-size: 0.8rem; color: var(--text-grey);">(Conta de luz, água, telefone, banco)</p>
+                    <p>(Conta de luz, água, telefone, banco)</p>
                     <input type="file" name="files_address_{{ i }}[]" id="file-addr-{{ i }}" style="display: none;"
                         onchange="updateStatus('addr-{{ i }}')">
                 </div>
-                <span class="file-status" id="status-addr-{{ i }}" style="margin-top: 5px;">Comprovante Selecionado
+                <span class="file-status" id="status-addr-{{ i }}" style="margin-top: 8px;">Comprovante selecionado
                     ✓</span>
             </div>
             {% endfor %}
 
-
-            <!-- Company Docs (Optional) -->
+            <!-- Company Docs -->
             <div class="partner-section">
                 <div class="partner-header">
-                    <h2>Documentos da Empresa (Opcional)</h2>
-                    <span class="file-status" id="status-company">Arquivo Selecionado ✓</span>
+                    <h2>🏢 Documentos da Empresa (Opcional)</h2>
+                    <span class="file-status" id="status-company">Arquivo selecionado ✓</span>
                 </div>
                 <div class="upload-zone" id="dropZone-company"
                     onclick="document.getElementById('file-company').click()">
                     <p>Contrato Social anterior, Cartão CNPJ, etc.</p>
+                    <p>(Arraste ou clique para enviar)</p>
                     <input type="file" name="files_company[]" id="file-company" style="display: none;" multiple
                         onchange="updateStatus('company')">
                 </div>
             </div>
 
-            <div style="text-align: center; margin-bottom: 50px;">
-                <!-- Success Banner (hidden by default) -->
+            <div style="text-align: center; margin: 48px 0 64px;">
+                <!-- Success Banner -->
                 <div id="successBanner" class="success-banner"
-                    style="display: none; max-width: 500px; margin: 0 auto 20px auto;">
+                    style="display: none; max-width: 500px; margin: 0 auto 24px;">
                     <span class="success-banner-icon">✅</span>
                     <span class="success-banner-text" id="bannerText">Documentos selecionados com sucesso!</span>
                 </div>
 
-                <button type="submit" class="btn btn-primary" id="submitBtn"
-                    style="padding: 18px 40px; font-size: 1.2rem;">
+                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
                     <span class="btn-text">Processar e Gerar Formulário →</span>
                 </button>
+
                 <div id="progressContainer" class="progress-bar-container"
-                    style="display: none; max-width: 300px; margin: 15px auto 0;">
+                    style="display: none; max-width: 300px; margin: 16px auto 0;">
                     <div class="progress-bar progress-bar-indeterminate"></div>
                 </div>
-                <p id="statusText" style="margin-top: 10px; color: var(--text-grey); font-size: 0.9rem;">
-                    Nota: Se não enviar documentos, o formulário será gerado em branco.
+
+                <p id="statusText" style="margin-top: 12px; color: var(--text-secondary); font-size: 0.9rem;">
+                    Se não enviar documentos, o formulário será gerado em branco
                 </p>
             </div>
         </form>
@@ -112,35 +91,23 @@
     <div id="toastContainer" class="toast-container"></div>
 
     <script>
-        // Toast notification system
+        // Toast system
         function showToast(message, type = 'success') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
-
-            const icons = {
-                success: '✅',
-                error: '❌',
-                info: 'ℹ️'
-            };
-
+            const icons = { success: '✅', error: '❌', info: 'ℹ️' };
             toast.innerHTML = `
                 <span class="toast-icon">${icons[type]}</span>
                 <span class="toast-message">${message}</span>
                 <button class="toast-close" onclick="this.parentElement.remove()">×</button>
             `;
-
             container.appendChild(toast);
-
-            // Auto-remove after 5 seconds
             setTimeout(() => {
                 toast.classList.add('removing');
                 setTimeout(() => toast.remove(), 300);
             }, 5000);
         }
-
-        // Track total files selected
-        let totalFilesSelected = 0;
 
         function updateStatus(id) {
             const input = document.getElementById('file-' + id);
@@ -149,14 +116,11 @@
 
             if (input.files.length > 0) {
                 status.style.display = 'block';
-                status.textContent = input.files.length + " arquivo(s) selecionado(s)";
-                zone.style.borderColor = 'var(--success)';
-                zone.style.background = '#f0fff4';
+                status.textContent = input.files.length + " arquivo(s) selecionado(s) ✓";
+                zone.classList.add('active');
 
-                // Show toast notification
-                showToast(`${input.files.length} arquivo(s) adicionado(s) para ${id === 'company' ? 'Empresa' : 'Sócio ' + (parseInt(id) + 1)}`, 'success');
-
-                // Update total and show banner
+                const label = id === 'company' ? 'Empresa' : (typeof id === 'number' ? 'Sócio ' + (id + 1) : id);
+                showToast(`${input.files.length} arquivo(s) adicionado(s)`, 'success');
                 updateTotalFiles();
             }
         }
@@ -164,9 +128,7 @@
         function updateTotalFiles() {
             const allInputs = document.querySelectorAll('input[type="file"]');
             let total = 0;
-            allInputs.forEach(input => {
-                total += input.files.length;
-            });
+            allInputs.forEach(input => total += input.files.length);
 
             if (total > 0) {
                 const banner = document.getElementById('successBanner');
@@ -176,37 +138,36 @@
             }
         }
 
-        // Form submission with loading state
+        // Form submission
         document.getElementById('multistepForm').addEventListener('submit', function (e) {
             const submitBtn = document.getElementById('submitBtn');
             const btnText = submitBtn.querySelector('.btn-text');
             const progressContainer = document.getElementById('progressContainer');
             const statusText = document.getElementById('statusText');
 
-            // Activate loading state
             submitBtn.classList.add('btn-loading');
-            btnText.textContent = 'Processando...';
-            btnText.style.opacity = '1';
+            btnText.innerHTML = '<span class="loading-spinner"></span>Processando...';
             progressContainer.style.display = 'block';
-            statusText.textContent = 'Extraindo dados com IA... isso pode levar alguns segundos.';
-            statusText.style.color = 'var(--accent-cyan-end)';
+            statusText.textContent = 'Extraindo dados com IA... isso pode levar alguns segundos';
+            statusText.style.color = 'var(--accent)';
 
-            // Show info toast
             showToast('Processando documentos com IA...', 'info');
         });
 
-        // Add drag and drop logic for all zones
+        // Drag and drop
         const zones = document.querySelectorAll('.upload-zone');
         zones.forEach(zone => {
             zone.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                zone.style.borderColor = 'var(--accent-cyan-end)';
-                zone.style.background = '#f0f8ff';
+                zone.style.borderColor = 'var(--accent)';
+                zone.style.background = 'rgba(59, 130, 246, 0.05)';
             });
             zone.addEventListener('dragleave', (e) => {
                 e.preventDefault();
-                zone.style.borderColor = 'var(--border-color)';
-                zone.style.background = '#fafafa';
+                if (!zone.classList.contains('active')) {
+                    zone.style.borderColor = 'var(--border-color)';
+                    zone.style.background = 'var(--bg-tertiary)';
+                }
             });
             zone.addEventListener('drop', (e) => {
                 e.preventDefault();
@@ -218,8 +179,6 @@
                     input.files = e.dataTransfer.files;
                     updateStatus(updateId);
                 }
-                zone.style.borderColor = 'var(--success)';
-                zone.style.background = '#f0fff4';
             });
         });
     </script>

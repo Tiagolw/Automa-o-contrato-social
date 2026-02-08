@@ -3,33 +3,80 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Contrato Gerado com Sucesso - Madruga Contabilidade</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrato Gerado - Automação de Contratos</title>
+    <meta name="description" content="Seu contrato foi gerado com sucesso">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--color-success-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 2.5rem;
+            animation: scaleIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .success-card {
+            text-align: center;
+            padding: 64px 48px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .success-card h2 {
+            margin-bottom: 12px;
+        }
+
+        .success-card p {
+            margin-bottom: 32px;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+    </style>
 </head>
 
 <body>
     <header>
         <div class="container">
-            <h1>Sucesso!</h1>
+            <h1>✅ Sucesso!</h1>
+            <p>Seu contrato foi gerado com sucesso</p>
         </div>
     </header>
 
     <div class="container">
-        <div class="card" style="text-align: center;">
-            <div style="color: var(--success); font-size: 4rem; margin-bottom: 20px;">✓</div>
-            <h2>Seu contrato está pronto</h2>
-            <p>O documento foi gerado com sucesso com base nas informações fornecidas.</p>
+        <div class="card success-card">
+            <div class="success-icon">✓</div>
+            <h2>Contrato Pronto!</h2>
+            <p>O documento foi gerado com base nas informações fornecidas e está pronto para download.</p>
 
-            <div style="margin-top: 40px;">
-                <a href="{{ url_for('download_file', filename=filename, name=display_name) }}" class="btn btn-primary"
-                    style="padding: 16px 32px; font-size: 1.2rem;">
+            <div class="action-buttons">
+                <a href="{{ url_for('download_file', filename=filename, name=display_name) }}"
+                    class="btn btn-primary btn-lg">
                     📥 Baixar Contrato
                 </a>
-            </div>
-
-            <div style="margin-top: 20px;">
                 <a href="{{ url_for('index') }}" class="btn btn-secondary">
-                    Criar Novo Contrato
+                    ← Voltar ao Dashboard
                 </a>
             </div>
         </div>
@@ -39,7 +86,6 @@
     <div id="toastContainer" class="toast-container"></div>
 
     <script>
-        // Toast notification
         function showToast(message, type = 'success') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
@@ -56,7 +102,6 @@
             }, 5000);
         }
 
-        // Show success toast on page load
         document.addEventListener('DOMContentLoaded', function () {
             showToast('Contrato gerado com sucesso! Clique para baixar.', 'success');
         });
