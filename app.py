@@ -4,7 +4,10 @@ import re
 import base64
 import json
 import traceback
+import gc
+import io
 import pypdf
+from PIL import Image
 from docxtpl import DocxTemplate
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -131,6 +134,41 @@ def extract_data_with_ai(text):
         print(f"[ERROR] AI Extraction Error: {e}")
         return {}
 
+def compress_image_for_api(filepath, max_size_kb=500, max_dimension=1500):
+    """Compress and resize image to reduce memory and API payload."""
+    try:
+        with Image.open(filepath) as img:
+            # Convert to RGB if necessary
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+            
+            # Resize if too large
+            if max(img.size) > max_dimension:
+                ratio = max_dimension / max(img.size)
+                new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
+                img = img.resize(new_size, Image.Resampling.LANCZOS)
+            
+            # Compress to JPEG
+            buffer = io.BytesIO()
+            quality = 85
+            img.save(buffer, format='JPEG', quality=quality, optimize=True)
+            
+            # Reduce quality if still too large
+            while buffer.tell() > max_size_kb * 1024 and quality > 30:
+                buffer.seek(0)
+                buffer.truncate()
+                quality -= 10
+                img.save(buffer, format='JPEG', quality=quality, optimize=True)
+            
+            buffer.seek(0)
+            result = base64.b64encode(buffer.read()).decode('utf-8')
+            buffer.close()
+            print(f"[DEBUG] Compressed image to {len(result) // 1024}KB base64")
+            return result, 'image/jpeg'
+    except Exception as e:
+        print(f"[WARN] Image compression failed: {e}, using original")
+        return None, None
+
 def extract_data_from_image(filepath):
     """Extract data from an image using OpenAI Vision API."""
     if not openai_client:
@@ -138,14 +176,17 @@ def extract_data_from_image(filepath):
         return {}
     
     try:
-        with open(filepath, "rb") as image_file:
-            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+        # Try compressed version first (saves memory)
+        base64_image, mime_type = compress_image_for_api(filepath)
         
-        # Determine mime type
-        ext = filepath.lower().split('.')[-1]
-        mime_type = f"image/{ext}" if ext in ['png', 'jpg', 'jpeg'] else "image/jpeg"
-        if ext == 'jpg':
-            mime_type = "image/jpeg"
+        if not base64_image:
+            # Fallback to original
+            with open(filepath, "rb") as image_file:
+                base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+            ext = filepath.lower().split('.')[-1]
+            mime_type = f"image/{ext}" if ext in ['png', 'jpg', 'jpeg'] else "image/jpeg"
+            if ext == 'jpg':
+                mime_type = "image/jpeg"
         
         # Improved prompt for Brazilian identity documents
         identity_prompt = """Você é um especialista em extração de dados de documentos brasileiros.
@@ -204,6 +245,11 @@ Retorne APENAS um objeto JSON válido, sem explicações."""
         )
         result = json.loads(response.choices[0].message.content)
         print(f"[DEBUG] OpenAI Image extraction result: {result}")
+        
+        # Explicit memory cleanup
+        del base64_image
+        gc.collect()
+        
         return result
     except json.JSONDecodeError as e:
         print(f"[ERROR] Invalid JSON from OpenAI Vision: {e}")
@@ -222,13 +268,17 @@ def extract_address_from_proof(filepath):
         return {}
     
     try:
-        with open(filepath, "rb") as image_file:
-            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+        # Use compression for address proofs too
+        base64_image, mime_type = compress_image_for_api(filepath)
         
-        ext = filepath.lower().split('.')[-1]
-        mime_type = f"image/{ext}" if ext in ['png', 'jpg', 'jpeg'] else "image/jpeg"
-        if ext == 'jpg':
-            mime_type = "image/jpeg"
+        if not base64_image:
+            with open(filepath, "rb") as image_file:
+                base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+            ext = filepath.lower().split('.')[-1]
+            mime_type = f"image/{ext}" if ext in ['png', 'jpg', 'jpeg'] else "image/jpeg"
+            if ext == 'jpg':
+                mime_type = "image/jpeg"
+
         
         address_prompt = """Você é um especialista em extração de dados de comprovantes de endereço brasileiros.
 
@@ -349,10 +399,12 @@ def convert_pdf_to_image(filepath):
     # Try pdf2image first (requires poppler)
     if PDF2IMAGE_AVAILABLE and convert_from_path is not None:
         try:
-            images = convert_from_path(filepath, first_page=1, last_page=1, dpi=150)
+            images = convert_from_path(filepath, first_page=1, last_page=1, dpi=100)  # Reduced from 150 for memory
             if images:
                 img_path = filepath.replace('.pdf', '_page1.png')
                 images[0].save(img_path, 'PNG')
+                del images  # Explicit cleanup
+                gc.collect()
                 print(f"[DEBUG] Converted PDF to image: {img_path}")
                 return img_path
         except Exception as e:
@@ -363,10 +415,12 @@ def convert_pdf_to_image(filepath):
         try:
             doc = fitz.open(filepath)
             page = doc[0]
-            pix = page.get_pixmap(dpi=150)
+            pix = page.get_pixmap(dpi=100)  # Reduced from 150 for memory
             img_path = filepath.replace('.pdf', '_page1.png')
             pix.save(img_path)
+            del pix  # Explicit cleanup
             doc.close()
+            gc.collect()
             print(f"[DEBUG] Converted PDF to image with PyMuPDF: {img_path}")
             return img_path
         except Exception as e2:
@@ -584,6 +638,7 @@ def process():
                 
                 # First try to extract text from PDF
                 ext = addr_filepath.lower().split('.')[-1]
+                img_path = None
                 if ext == 'pdf':
                     # Convert PDF to image for address extraction
                     img_path = convert_pdf_to_image(addr_filepath)
@@ -593,6 +648,14 @@ def process():
                         addr_data = extract_address_from_proof(addr_filepath)
                 else:
                     addr_data = extract_address_from_proof(addr_filepath)
+                
+                # Clean up temp converted image
+                if img_path and os.path.exists(img_path):
+                    try:
+                        os.remove(img_path)
+                        print(f"[DEBUG] Cleaned temp image: {img_path}")
+                    except:
+                        pass
                 
                 if addr_data:
                     print(f"[DEBUG] Extracted address data for partner {i}: {addr_data}")
@@ -613,6 +676,10 @@ def process():
         
         partners_data.append(partner_info)
         print(f"[DEBUG] Partner {i} final data: {partner_info}")
+        
+        # Memory cleanup after each partner
+        gc.collect()
+        print(f"[DEBUG] Memory cleaned after partner {i}")
 
     # 2. Process Company Docs
     company_files = request.files.getlist('files_company[]')
@@ -627,6 +694,10 @@ def process():
             if extracted:
                 print(f"[DEBUG] Extracted company data: {extracted}")
                 company_data.update(extracted)
+    
+    # Final memory cleanup
+    gc.collect()
+    print("[DEBUG] Final memory cleanup completed")
 
     # Store in session or pass directly to form
     print(f"[DEBUG] Final partners count: {len(partners_data)}")
