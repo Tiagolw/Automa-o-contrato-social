@@ -20,12 +20,13 @@ except ImportError:
     convert_from_path = None  # type: ignore
     PDF2IMAGE_AVAILABLE = False
 
-try:
-    import fitz  # PyMuPDF
-    FITZ_AVAILABLE = True
-except ImportError:
-    fitz = None  # type: ignore
-    FITZ_AVAILABLE = False
+# Disable PyMuPDF to save memory on Render free tier
+# try:
+#     import fitz  # PyMuPDF
+#     FITZ_AVAILABLE = True
+# except ImportError:
+fitz = None  # type: ignore
+FITZ_AVAILABLE = False  # Disabled for memory optimization
 
 load_dotenv()
 
@@ -134,7 +135,7 @@ def extract_data_with_ai(text):
         print(f"[ERROR] AI Extraction Error: {e}")
         return {}
 
-def compress_image_for_api(filepath, max_size_kb=500, max_dimension=1500):
+def compress_image_for_api(filepath, max_size_kb=300, max_dimension=1000):
     """Compress and resize image to reduce memory and API payload."""
     try:
         with Image.open(filepath) as img:
@@ -148,9 +149,9 @@ def compress_image_for_api(filepath, max_size_kb=500, max_dimension=1500):
                 new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
                 img = img.resize(new_size, Image.Resampling.LANCZOS)
             
-            # Compress to JPEG
+            # Compress to JPEG with aggressive settings
             buffer = io.BytesIO()
-            quality = 85
+            quality = 70  # Start lower for memory savings
             img.save(buffer, format='JPEG', quality=quality, optimize=True)
             
             # Reduce quality if still too large
@@ -628,6 +629,13 @@ def process():
                 if extracted:
                     print(f"[DEBUG] Extracted identity data for partner {i}: {extracted}")
                     partner_info.update(extracted)
+                
+                # Clean up uploaded file immediately to save memory
+                try:
+                    os.remove(filepath)
+                    print(f"[DEBUG] Cleaned up: {filepath}")
+                except:
+                    pass
         
         # Process address proof documents (utility bills, bank statements)
         for addr_file in address_files:
@@ -673,6 +681,13 @@ def process():
                             f"CEP {addr_data.get('zip_code', '')}"
                         ]
                         partner_info['address'] = ', '.join(p for p in parts if p and p != '/' and p != 'CEP ')
+                
+                # Clean up address file
+                try:
+                    os.remove(addr_filepath)
+                    print(f"[DEBUG] Cleaned up: {addr_filepath}")
+                except:
+                    pass
         
         partners_data.append(partner_info)
         print(f"[DEBUG] Partner {i} final data: {partner_info}")
@@ -694,6 +709,13 @@ def process():
             if extracted:
                 print(f"[DEBUG] Extracted company data: {extracted}")
                 company_data.update(extracted)
+            
+            # Clean up company file immediately
+            try:
+                os.remove(filepath)
+                print(f"[DEBUG] Cleaned up: {filepath}")
+            except:
+                pass
     
     # Final memory cleanup
     gc.collect()
