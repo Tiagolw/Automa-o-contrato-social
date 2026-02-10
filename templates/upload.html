@@ -4,183 +4,279 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload de Documentos - Automação de Contratos</title>
-    <meta name="description" content="Envie documentos para extração automática de dados">
+    <title>Upload de Documentos - Madruga Contabilidade</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .upload-section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        .upload-section h3 {
+            color: var(--primary);
+            margin-bottom: 16px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+
+        .file-input-group {
+            margin-bottom: 16px;
+        }
+
+        .file-input-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        input[type="file"]:hover {
+            border-color: var(--accent);
+        }
+
+        /* Progress Modal Styles */
+        .status-text {
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .sub-status {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+    </style>
 </head>
 
 <body>
     <header>
         <div class="container">
-            <h1>📤 Envio de Documentos</h1>
-            <p>Envie os documentos para extração automática ou pule para preencher manualmente</p>
+            <h1>Upload de Documentos</h1>
+            <p>Envie os documentos para processamento inteligente</p>
         </div>
     </header>
 
     <div class="container">
-        <form action="/process" method="post" enctype="multipart/form-data" id="multistepForm">
-            <input type="hidden" name="partner_count" value="{{ partner_count }}">
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="hidden" id="partnerTotal" value="{{ partner_count }}">
+
+            <div class="card" style="margin-bottom: 30px; border-left: 5px solid var(--primary);">
+                <h2 style="color: var(--primary); margin-bottom: 10px;">Configuração: {{ partner_count }} Sócios
+                </h2>
+                <p>Por favor, envie os documentos de <strong>cada sócio</strong> separadamente abaixo.</p>
+            </div>
 
             {% for i in range(partner_count) %}
-            <div class="partner-section">
-                <div class="partner-header">
-                    <h2>👤 Sócio {{ i + 1 }}</h2>
-                    <span class="file-status" id="status-{{ i }}">Arquivo selecionado ✓</span>
+            <div class="upload-section">
+                <h3>Sócio {{ i + 1 }}</h3>
+                <div class="file-input-group">
+                    <label class="file-input-label">Documentos de Identidade (CNH, RG, CIN)</label>
+                    <input type="file" name="files_partner_{{ i }}[]" multiple accept=".pdf,.png,.jpg,.jpeg">
+                    <small>Frente e verso se necessário. Pode selecionar múltiplos arquivos.</small>
                 </div>
-
-                <div class="upload-zone" id="dropZone-{{ i }}"
-                    onclick="document.getElementById('file-{{ i }}').click()">
-                    <p>📄 Documento de Identidade</p>
-                    <p>(CNH, CIN, RG - Arraste ou clique para enviar)</p>
-                    <input type="file" name="files_partner_{{ i }}[]" id="file-{{ i }}" style="display: none;" multiple
-                        onchange="updateStatus({{ i }})">
+                <div class="file-input-group">
+                    <label class="file-input-label">Comprovante de Endereço</label>
+                    <input type="file" name="files_address_{{ i }}[]" accept=".pdf,.png,.jpg,.jpeg">
+                    <small>Conta de luz, água, etc.</small>
                 </div>
-
-                <div class="upload-zone" id="dropZone-addr-{{ i }}"
-                    onclick="document.getElementById('file-addr-{{ i }}').click()" style="margin-top: 16px;">
-                    <p>📍 Comprovante de Endereço (Opcional)</p>
-                    <p>(Conta de luz, água, telefone, banco)</p>
-                    <input type="file" name="files_address_{{ i }}[]" id="file-addr-{{ i }}" style="display: none;"
-                        onchange="updateStatus('addr-{{ i }}')">
-                </div>
-                <span class="file-status" id="status-addr-{{ i }}" style="margin-top: 8px;">Comprovante selecionado
-                    ✓</span>
             </div>
             {% endfor %}
 
-            <!-- Company Docs -->
-            <div class="partner-section">
-                <div class="partner-header">
-                    <h2>🏢 Documentos da Empresa (Opcional)</h2>
-                    <span class="file-status" id="status-company">Arquivo selecionado ✓</span>
-                </div>
-                <div class="upload-zone" id="dropZone-company"
-                    onclick="document.getElementById('file-company').click()">
-                    <p>Contrato Social anterior, Cartão CNPJ, etc.</p>
-                    <p>(Arraste ou clique para enviar)</p>
-                    <input type="file" name="files_company[]" id="file-company" style="display: none;" multiple
-                        onchange="updateStatus('company')">
+            <div class="upload-section" style="border-left: 5px solid var(--accent);">
+                <h3>Dados da Empresa</h3>
+                <div class="file-input-group">
+                    <label class="file-input-label">Cartão CNPJ ou Contrato Social Anterior (Opcional)</label>
+                    <input type="file" name="files_company[]" multiple accept=".pdf,.png,.jpg,.jpeg">
+                    <small>Se for alteração ou para aproveitar dados.</small>
                 </div>
             </div>
 
-            <div style="text-align: center; margin: 48px 0 64px;">
-                <!-- Success Banner -->
-                <div id="successBanner" class="success-banner"
-                    style="display: none; max-width: 500px; margin: 0 auto 24px;">
-                    <span class="success-banner-icon">✅</span>
-                    <span class="success-banner-text" id="bannerText">Documentos selecionados com sucesso!</span>
-                </div>
-
-                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
-                    <span class="btn-text">Processar e Gerar Formulário →</span>
+            <div style="text-align: center; margin-top: 40px; margin-bottom: 60px;">
+                <button type="button" class="btn btn-primary" onclick="startProcessing()"
+                    style="padding: 15px 50px; font-size: 1.2rem;">
+                    Processar Documentos ⚡
                 </button>
-
-                <div id="progressContainer" class="progress-bar-container"
-                    style="display: none; max-width: 300px; margin: 16px auto 0;">
-                    <div class="progress-bar progress-bar-indeterminate"></div>
-                </div>
-
-                <p id="statusText" style="margin-top: 12px; color: var(--text-secondary); font-size: 0.9rem;">
-                    Se não enviar documentos, o formulário será gerado em branco
-                </p>
+                <br><br>
+                <a href="{{ url_for('index') }}" style="color: var(--text-secondary);">Voltar</a>
             </div>
         </form>
     </div>
 
-    <!-- Toast Container -->
-    <div id="toastContainer" class="toast-container"></div>
+    <!-- Processing Modal -->
+    <div class="modal-overlay" id="processingModal">
+        <div class="modal">
+            <div class="spinner"></div>
+            <div class="status-text" id="statusText">Iniciando processamento...</div>
+            <div class="sub-status" id="subStatus">Preparando arquivos...</div>
+            <p style="font-size: 0.8rem; color: #888; margin-top: 15px;">
+                Isso pode levar alguns minutos. Por favor, <strong>não feche a página</strong>.
+            </p>
+        </div>
+    </div>
 
     <script>
-        // Toast system
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            toast.className = `toast toast-${type}`;
-            const icons = { success: '✅', error: '❌', info: 'ℹ️' };
-            toast.innerHTML = `
-                <span class="toast-icon">${icons[type]}</span>
-                <span class="toast-message">${message}</span>
-                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
-            `;
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.classList.add('removing');
-                setTimeout(() => toast.remove(), 300);
-            }, 5000);
-        }
-
-        function updateStatus(id) {
-            const input = document.getElementById('file-' + id);
-            const status = document.getElementById('status-' + id);
-            const zone = document.getElementById('dropZone-' + id);
-
-            if (input.files.length > 0) {
-                status.style.display = 'block';
-                status.textContent = input.files.length + " arquivo(s) selecionado(s) ✓";
-                zone.classList.add('active');
-
-                const label = id === 'company' ? 'Empresa' : (typeof id === 'number' ? 'Sócio ' + (id + 1) : id);
-                showToast(`${input.files.length} arquivo(s) adicionado(s)`, 'success');
-                updateTotalFiles();
-            }
-        }
-
-        function updateTotalFiles() {
-            const allInputs = document.querySelectorAll('input[type="file"]');
-            let total = 0;
-            allInputs.forEach(input => total += input.files.length);
-
-            if (total > 0) {
-                const banner = document.getElementById('successBanner');
-                const bannerText = document.getElementById('bannerText');
-                banner.style.display = 'flex';
-                bannerText.textContent = `${total} documento(s) pronto(s) para processamento`;
-            }
-        }
-
-        // Form submission
-        document.getElementById('multistepForm').addEventListener('submit', function (e) {
-            const submitBtn = document.getElementById('submitBtn');
-            const btnText = submitBtn.querySelector('.btn-text');
-            const progressContainer = document.getElementById('progressContainer');
+        async function startProcessing() {
+            const modal = document.getElementById('processingModal');
             const statusText = document.getElementById('statusText');
+            const subStatus = document.getElementById('subStatus');
+            const progressBar = document.getElementById('progressBar');
+            const partnerCount = parseInt(document.getElementById('partnerTotal').value);
 
-            submitBtn.classList.add('btn-loading');
-            btnText.innerHTML = '<span class="loading-spinner"></span>Processando...';
-            progressContainer.style.display = 'block';
-            statusText.textContent = 'Extraindo dados com IA... isso pode levar alguns segundos';
-            statusText.style.color = 'var(--accent)';
-
-            showToast('Processando documentos com IA...', 'info');
-        });
-
-        // Drag and drop
-        const zones = document.querySelectorAll('.upload-zone');
-        zones.forEach(zone => {
-            zone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                zone.style.borderColor = 'var(--accent)';
-                zone.style.background = 'rgba(59, 130, 246, 0.05)';
+            // Check if any files are selected
+            const fileInputs = document.querySelectorAll('input[type="file"]');
+            let hasFiles = false;
+            fileInputs.forEach(input => {
+                if (input.files.length > 0) hasFiles = true;
             });
-            zone.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                if (!zone.classList.contains('active')) {
-                    zone.style.borderColor = 'var(--border-color)';
-                    zone.style.background = 'var(--bg-tertiary)';
+
+            if (!hasFiles) {
+                alert("Por favor, selecione pelo menos um documento para continuar.");
+                return;
+            }
+
+            modal.style.display = 'flex';
+
+            // Consolidated data structure
+            let finalData = {
+                partners: [],
+                company: {}
+            };
+
+            // Calculate total tasks for progress bar
+            let totalFiles = 0;
+            fileInputs.forEach(input => totalFiles += input.files.length);
+            if (totalFiles === 0) totalFiles = 1; // Prevent div by zero
+
+            let processedFiles = 0;
+
+            function updateStatus(msg, subMsg) {
+                if (msg) statusText.innerText = msg;
+                if (subMsg) subStatus.innerText = subMsg;
+            }
+
+            try {
+                // 1. Process Partners
+                for (let i = 0; i < partnerCount; i++) {
+                    let partnerData = { id: i };
+
+                    // Identity Docs
+                    const idInput = document.querySelector(`input[name="files_partner_${i}[]"]`);
+                    if (idInput && idInput.files.length > 0) {
+                        updateStatus(`Processando Sócio ${i + 1}`, "Lendo documentos de identidade...");
+
+                        for (let file of idInput.files) {
+                            subStatus.innerText = `Analisando: ${file.name}`;
+                            const result = await uploadSingleFile(file, 'identity', i);
+                            // Merge results
+                            console.log(`[DEBUG] Sócio ${i} identity result:`, result);
+                            partnerData = { ...partnerData, ...result };
+                            processedFiles++;
+                        }
+                    }
+
+                    // Address Docs
+                    const addrInput = document.querySelector(`input[name="files_address_${i}[]"]`);
+                    if (addrInput && addrInput.files.length > 0) {
+                        updateStatus(`Processando Sócio ${i + 1}`, "Lendo comprovante de endereço...");
+
+                        for (let file of addrInput.files) {
+                            subStatus.innerText = `Analisando: ${file.name}`;
+                            const result = await uploadSingleFile(file, 'address', i);
+                            // Merge address specifically
+                            console.log(`[DEBUG] Sócio ${i} address result:`, result);
+                            if (result.address) partnerData.address = result.address;
+                            else if (result.full_address) partnerData.address = result.full_address;
+
+                            processedFiles++;
+                        }
+                    }
+
+                    finalData.partners.push(partnerData);
                 }
-            });
-            zone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                const inputId = zone.id.replace('dropZone-', 'file-');
-                const updateId = inputId.replace('file-', '');
-                const input = document.getElementById(inputId);
 
-                if (e.dataTransfer.files.length) {
-                    input.files = e.dataTransfer.files;
-                    updateStatus(updateId);
+                // 2. Process Company
+                const companyInput = document.querySelector('input[name="files_company[]"]');
+                if (companyInput && companyInput.files.length > 0) {
+                    updateStatus("Processando Empresa", "Lendo documentos da empresa...");
+
+                    for (let file of companyInput.files) {
+                        subStatus.innerText = `Analisando: ${file.name}`;
+                        const result = await uploadSingleFile(file, 'company', null);
+                        console.log(`[DEBUG] Company result:`, result);
+                        finalData.company = { ...finalData.company, ...result };
+                        processedFiles++;
+                    }
                 }
+
+                // 3. Finalize
+                updateStatus("Finalizando...", "Consolidando dados...");
+                console.log("[DEBUG] Consolidated Final Data:", finalData);
+                await submitConsolidatedData(finalData);
+
+            } catch (error) {
+                console.error("Erro no processamento:", error);
+                alert("Ocorreu um erro ao processar os documentos: " + error.message);
+                modal.style.display = 'none';
+            }
+        }
+
+        async function uploadSingleFile(file, type, partnerIndex) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', type);
+            if (partnerIndex !== null) formData.append('partner_index', partnerIndex);
+
+            const response = await fetch('/api/extract-document', {
+                method: 'POST',
+                body: formData
             });
-        });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Erro na extração');
+            }
+
+            return await response.json();
+        }
+
+        async function submitConsolidatedData(data) {
+            const response = await fetch('/process-json', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                // The server returns the rendered HTML of the form page
+                const html = await response.text();
+                document.open();
+                document.write(html);
+                document.close();
+                // Optionally update URL to avoid refresh issues
+                history.pushState({}, "Dados Extraídos", "/form");
+            } else {
+                throw new Error("Falha ao salvar dados processados");
+            }
+        }
     </script>
 </body>
 

@@ -313,8 +313,9 @@
                             <div class="cell-actions">
                                 <a href="{{ url_for('edit_contract', id=contract.id) }}" class="icon-btn"
                                     title="Editar">✏️</a>
-                                <a href="{{ url_for('download_contract', id=contract.id) }}" class="icon-btn"
-                                    title="Baixar">📥</a>
+                                <button class="icon-btn"
+                                    onclick="initiateDownload('{{ contract.id }}', '{{ contract.effective_status }}')"
+                                    title="Baixar">📥</button>
                                 <button class="icon-btn danger" onclick="deleteContract('{{ contract.id }}')"
                                     title="Excluir">🗑️</button>
                             </div>
@@ -354,6 +355,47 @@
             <button class="btn btn-ghost" onclick="closeModal()" style="margin-top: 12px; width: 100%;">
                 Cancelar
             </button>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" id="deleteContractModal">
+        <div class="modal">
+            <h2 style="color: var(--color-error);">🗑️ Excluir Contrato?</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 24px;">
+                Tem certeza que deseja excluir este contrato? <br>
+                <strong>Essa ação não pode ser desfeita.</strong>
+            </p>
+
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn">Excluir Definitivamente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Incomplete Contract Warning Modal -->
+    <div class="modal-overlay" id="incompleteContractModal">
+        <div class="modal">
+            <h2 style="color: var(--color-warning);">⚠️ Contrato Incompleto</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 24px;">
+                Este contrato ainda é um rascunho e possui campos em branco.<br>
+                O documento gerado terá <strong>placeholders</strong> (ex: [NOME]) onde faltar dados.
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button class="btn btn-primary" id="continueEditingBtn" style="width: 100%;">
+                    ✏️ Continuar Editando
+                </button>
+
+                <button class="btn btn-secondary" id="downloadAnywayBtn" style="width: 100%;">
+                    📥 Baixar Assim Mesmo
+                </button>
+
+                <button class="btn btn-ghost" onclick="closeIncompleteModal()" style="margin-top: 8px;">
+                    Cancelar
+                </button>
+            </div>
         </div>
     </div>
 
@@ -441,16 +483,86 @@
         }
 
         // Delete
+        // Delete
+        let contractToDeleteId = null;
+
         function deleteContract(id) {
-            if (confirm('Tem certeza que deseja excluir este contrato?')) {
-                fetch(`/api/contracts/${id}`, { method: 'DELETE' })
-                    .then(response => {
-                        if (response.ok) location.reload();
-                        else showToast('Erro ao excluir contrato', 'error');
-                    })
-                    .catch(() => showToast('Erro ao excluir contrato', 'error'));
+            contractToDeleteId = id;
+            document.getElementById('deleteContractModal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteContractModal').classList.remove('active');
+            contractToDeleteId = null;
+        }
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', function () {
+            if (!contractToDeleteId) return;
+
+            const btn = this;
+            const originalText = btn.innerText;
+            btn.innerText = 'Excluindo...';
+            btn.disabled = true;
+
+            fetch(`/api/contracts/${contractToDeleteId}`, { method: 'DELETE' })
+                .then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        showToast('Erro ao excluir contrato', 'error');
+                        btn.innerText = originalText;
+                        btn.disabled = false;
+                        closeDeleteModal();
+                    }
+                })
+                .catch(() => {
+                    showToast('Erro ao excluir contrato', 'error');
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    closeDeleteModal();
+                });
+        });
+
+        document.getElementById('deleteContractModal').addEventListener('click', function (e) {
+            if (e.target === this) closeDeleteModal();
+        });
+
+        // Download Logic
+        let downloadContractId = null;
+
+        function initiateDownload(id, status) {
+            if (status === 'completed') {
+                // Direct download for completed contracts
+                window.location.href = `/contract/${id}/download`;
+            } else {
+                // Show warning for drafts
+                downloadContractId = id;
+                document.getElementById('incompleteContractModal').classList.add('active');
             }
         }
+
+        function closeIncompleteModal() {
+            document.getElementById('incompleteContractModal').classList.remove('active');
+            downloadContractId = null;
+        }
+
+        document.getElementById('continueEditingBtn').addEventListener('click', function () {
+            if (downloadContractId) {
+                window.location.href = `/contract/${downloadContractId}/edit`;
+            }
+        });
+
+        document.getElementById('downloadAnywayBtn').addEventListener('click', function () {
+            if (downloadContractId) {
+                // Add force=true param
+                window.location.href = `/contract/${downloadContractId}/download?force=true`;
+                closeIncompleteModal();
+            }
+        });
+
+        document.getElementById('incompleteContractModal').addEventListener('click', function (e) {
+            if (e.target === this) closeIncompleteModal();
+        });
 
         // Toast
         function showToast(message, type = 'success') {

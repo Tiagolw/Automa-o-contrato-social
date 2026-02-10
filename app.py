@@ -11,6 +11,7 @@ from PIL import Image
 from docxtpl import DocxTemplate
 from openai import OpenAI
 from dotenv import load_dotenv
+import time
 
 # Optional imports for PDF to image conversion
 try:
@@ -20,13 +21,13 @@ except ImportError:
     convert_from_path = None  # type: ignore
     PDF2IMAGE_AVAILABLE = False
 
-# Disable PyMuPDF to save memory on Render free tier
-# try:
-#     import fitz  # PyMuPDF
-#     FITZ_AVAILABLE = True
-# except ImportError:
-fitz = None  # type: ignore
-FITZ_AVAILABLE = False  # Disabled for memory optimization
+# Enable PyMuPDF - Safe due to sequential processing
+try:
+    import fitz  # PyMuPDF
+    FITZ_AVAILABLE = True
+except ImportError:
+    fitz = None  # type: ignore
+    FITZ_AVAILABLE = False
 
 load_dotenv()
 
@@ -135,7 +136,7 @@ def extract_data_with_ai(text):
         print(f"[ERROR] AI Extraction Error: {e}")
         return {}
 
-def compress_image_for_api(filepath, max_size_kb=300, max_dimension=1000):
+def compress_image_for_api(filepath, max_size_kb=1024, max_dimension=2500):
     """Compress and resize image to reduce memory and API payload."""
     try:
         with Image.open(filepath) as img:
@@ -148,14 +149,15 @@ def compress_image_for_api(filepath, max_size_kb=300, max_dimension=1000):
                 ratio = max_dimension / max(img.size)
                 new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
                 img = img.resize(new_size, Image.Resampling.LANCZOS)
+                print(f"[DEBUG] Resized image to {new_size}")
             
-            # Compress to JPEG with aggressive settings
+            # Compress to JPEG with high quality
             buffer = io.BytesIO()
-            quality = 70  # Start lower for memory savings
+            quality = 90  # Start higher for better OCR
             img.save(buffer, format='JPEG', quality=quality, optimize=True)
             
             # Reduce quality if still too large
-            while buffer.tell() > max_size_kb * 1024 and quality > 30:
+            while buffer.tell() > max_size_kb * 1024 and quality > 50:
                 buffer.seek(0)
                 buffer.truncate()
                 quality -= 10
@@ -163,8 +165,9 @@ def compress_image_for_api(filepath, max_size_kb=300, max_dimension=1000):
             
             buffer.seek(0)
             result = base64.b64encode(buffer.read()).decode('utf-8')
+            size_kb = len(result) // 1024
             buffer.close()
-            print(f"[DEBUG] Compressed image to {len(result) // 1024}KB base64")
+            print(f"[DEBUG] Compressed image to {size_kb}KB base64 (Quality: {quality})")
             return result, 'image/jpeg'
     except Exception as e:
         print(f"[WARN] Image compression failed: {e}, using original")
@@ -189,37 +192,33 @@ def extract_data_from_image(filepath):
             if ext == 'jpg':
                 mime_type = "image/jpeg"
         
-        # Improved prompt for Brazilian identity documents
-        identity_prompt = """Você é um especialista em extração de dados de documentos brasileiros.
-        
-Analise esta imagem de documento de identificação (pode ser CNH, CIN, RG, ou outro documento de identidade brasileiro) e extraia TODAS as informações visíveis.
+        # Improved prompt for Brazilian identity documents with emphasis on OCR correction
+        identity_prompt = """Você é um especialista em OCR e extração de dados de documentos brasileiros.
 
-CAMPOS OBRIGATÓRIOS (extraia mesmo se parcialmente visíveis):
-- name: Nome completo EXATAMENTE como aparece no documento
-- birth_date: Data de nascimento no formato DD/MM/AAAA
-- cpf: CPF com 11 dígitos (pode ter pontos e traço)
+Analise esta imagem de documento de identificação (CNH, RG, CIN, Passaporte) e extraia os dados com MÁXIMA precisão.
 
-CAMPOS OPCIONAIS (extraia se visíveis):
-- nationality: Nacionalidade (geralmente "BRASILEIRA" ou "BRASILEIRO")
-- civil_state: Estado civil se visível
-- rg: Número do RG/Identidade
-- rg_issuer: Órgão emissor do RG (ex: SSP/SC)
-- cnh_number: Número de registro da CNH se for CNH
-- cnh_validity: Data de validade da CNH
-- cnh_category: Categoria da CNH (A, B, AB, etc)
-- address: Endereço completo se visível
-- mother_name: Nome da mãe
-- father_name: Nome do pai
+CAMPOS CRÍTICOS (Obrigatórios):
+- name: Nome completo (NOME). Se estiver em várias linhas, concatene. Corrija erros óbvios de OCR (ex: '0' em vez de 'O', '1' em vez de 'I').
+- cpf: O CPF é crucial. Procure formato XXX.XXX.XXX-XX. Se houver dígitos suspeitos, tente inferir pelo contexto.
+- birth_date: Data de nascimento (NASCIMENTO). Formato DD/MM/AAAA.
 
-INSTRUÇÕES IMPORTANTES:
-1. Leia o documento com MUITA atenção, letra por letra
-2. Para CNH digital ou física, o nome está no campo "NOME"
-3. Para CIN, o nome está próximo à foto
-4. Datas devem estar no formato DD/MM/AAAA
-5. Se não conseguir ler um campo, omita-o do JSON
-6. NÃO invente dados - só inclua o que está claramente visível
+CAMPOS ADICIONAIS:
+- nationality: Nacionalidade.
+- civil_state: Estado civil.
+- rg: Número do RG/Registro Geral.
+- rg_issuer: Órgão emissor (ex: SSP/SP, DETRAN/RJ).
+- cnh_number: Número de registro da CNH (se for CNH).
+- address: Endereço (se houver).
+- mother_name: Nome da mãe (FILIAÇÃO).
+- father_name: Nome do pai (FILIAÇÃO).
 
-Retorne APENAS um objeto JSON válido, sem explicações."""
+DICAS DE EXTRAÇÃO:
+- CNH: O nome fica no topo. O CPF fica abaixo da foto ou no verso.
+- RG Antigo: Nome e filiação no verso.
+- CIN (RG Novo): QR Code no verso. Dados principais na frente.
+- Ignore marcas d'água, carimbos ou reflexos que atrapalhem a leitura.
+- Se um campo estiver ilegível, retorne null para ele.
+- Retorne APENAS JSON válido."""
 
         response = openai_client.chat.completions.create(
             model="gpt-4o",
@@ -242,10 +241,13 @@ Retorne APENAS um objeto JSON válido, sem explicações."""
                 }
             ],
             response_format={"type": "json_object"},
-            max_tokens=1000  # Increased for more complete extraction
+            max_tokens=1000
         )
-        result = json.loads(response.choices[0].message.content)
-        print(f"[DEBUG] OpenAI Image extraction result: {result}")
+        content = response.choices[0].message.content
+        print(f"[DEBUG] Raw OpenAI Vision response: {content}")
+        
+        result = json.loads(content)
+        print(f"[DEBUG] Parsed JSON: {result}")
         
         # Explicit memory cleanup
         del base64_image
@@ -253,13 +255,14 @@ Retorne APENAS um objeto JSON válido, sem explicações."""
         
         return result
     except json.JSONDecodeError as e:
-        print(f"[ERROR] Invalid JSON from OpenAI Vision: {e}")
+        print(f"[ERROR] Invalid JSON from OpenAI Vision: {e}. Content: {content}")
         return {}
     except FileNotFoundError:
         print(f"[ERROR] Image file not found: {filepath}")
         return {}
     except Exception as e:
         print(f"[ERROR] OpenAI Image Extraction Error: {e}")
+        traceback.print_exc()
         return {}
 
 def extract_address_from_proof(filepath):
@@ -281,27 +284,24 @@ def extract_address_from_proof(filepath):
                 mime_type = "image/jpeg"
 
         
-        address_prompt = """Você é um especialista em extração de dados de comprovantes de endereço brasileiros.
+        address_prompt = """Você é um especialista em OCR de comprovantes de residência brasileiros.
 
-Analise esta imagem de comprovante de endereço (pode ser conta de luz, água, telefone, internet, banco, ou outro) e extraia as informações.
+Analise esta imagem (conta de luz, água, telefone, internet ou fatura de cartão) e extraia o endereço com precisão.
 
-CAMPOS A EXTRAIR:
-- holder_name: Nome do titular/cliente que aparece no documento
-- street: Nome da rua/avenida/logradouro
-- number: Número do imóvel
-- complement: Complemento (apartamento, bloco, sala, etc) - se houver
-- neighborhood: Bairro
-- city: Cidade
-- state: Estado (sigla UF, ex: SP, SC, RJ)
-- zip_code: CEP no formato 00000-000
-- full_address: Endereço completo formatado como: "Rua Nome, 123, Complemento, Bairro, Cidade/UF, CEP 00000-000"
+CAMPOS OBRIGATÓRIOS:
+- street: Logradouro (Rua, Av, Praça, etc) + Nome.
+- number: Número do imóvel. Se for 'S/N', retorne 'S/N'.
+- complement: Complemento (Ex: Apto 101, Bloco B).
+- neighborhood: Bairro.
+- city: Cidade.
+- state: Estado (UF, sigla de 2 letras).
+- zipcode: CEP (formato XXXXX-XXX).
 
-INSTRUÇÕES:
-1. Leia cuidadosamente todos os campos de endereço
-2. O CEP geralmente está próximo ao endereço
-3. Formate o endereço de forma limpa e legível
-4. Se não conseguir ler um campo, omita-o
-5. NÃO invente dados
+DICAS:
+- O endereço geralmente fica no topo, perto do nome do titular, ou no corpo da fatura.
+- Ignore endereços da empresa emissora da conta (ex: Enel, Sabesp, Claro). Procure o endereço do CLIENTE/DESTINATÁRIO.
+- Se houver códigos de barras ou números aleatórios, IGNORE.
+- Corrija erros comuns de OCR (ex: 'Rva' -> 'Rua').
 
 Retorne APENAS um objeto JSON válido."""
 
@@ -397,37 +397,57 @@ Retorne APENAS o JSON. Texto do documento:
 
 def convert_pdf_to_image(filepath):
     """Convert PDF first page to image for OCR processing."""
+    print(f"[DEBUG] Converting PDF to image: {filepath}")
+    
     # Try pdf2image first (requires poppler)
     if PDF2IMAGE_AVAILABLE and convert_from_path is not None:
         try:
-            images = convert_from_path(filepath, first_page=1, last_page=1, dpi=100)  # Reduced from 150 for memory
+            print("[DEBUG] Attempting pdf2image conversion with high DPI...")
+            images = convert_from_path(filepath, first_page=1, last_page=1, dpi=300)  # Professional OCR standard
             if images:
                 img_path = filepath.replace('.pdf', '_page1.png')
                 images[0].save(img_path, 'PNG')
                 del images  # Explicit cleanup
                 gc.collect()
+                print(f"[DEBUG] Content check: {os.path.getsize(img_path)} bytes")
                 print(f"[DEBUG] Converted PDF to image: {img_path}")
                 return img_path
+            else:
+                print("[WARN] pdf2image returned empty list")
         except Exception as e:
             print(f"[WARN] PDF to image conversion failed: {e}")
     
     # Fallback to PyMuPDF (fitz)
     if FITZ_AVAILABLE and fitz is not None:
         try:
+            print("[DEBUG] Attempting PyMuPDF (fitz) conversion...")
             doc = fitz.open(filepath)
+            if doc.page_count < 1:
+                print("[ERROR] PDF has no pages")
+                return None
+                
             page = doc[0]
-            pix = page.get_pixmap(dpi=100)  # Reduced from 150 for memory
+            pix = page.get_pixmap(dpi=300)  # Professional OCR standard
             img_path = filepath.replace('.pdf', '_page1.png')
             pix.save(img_path)
             del pix  # Explicit cleanup
             doc.close()
             gc.collect()
-            print(f"[DEBUG] Converted PDF to image with PyMuPDF: {img_path}")
-            return img_path
+            
+            if os.path.exists(img_path):
+                print(f"[DEBUG] Content check: {os.path.getsize(img_path)} bytes")
+                print(f"[DEBUG] Converted PDF to image with PyMuPDF: {img_path}")
+                return img_path
+            else:
+                print("[ERROR] PyMuPDF claimed success but file not found")
+                
         except Exception as e2:
             print(f"[WARN] PyMuPDF conversion also failed: {e2}")
+            traceback.print_exc()
+    else:
+        print(f"[WARN] PyMuPDF unavailable (Available={FITZ_AVAILABLE}, Module={fitz})")
     
-    print("[WARN] No PDF to image converter available (pdf2image or PyMuPDF)")
+    print("[WARN] No PDF to image converter available or all failed")
     return None
 
 def extract_document_data(filepath):
@@ -466,14 +486,18 @@ def extract_document_data(filepath):
                 if result:
                     return result
             
-            # If conversion failed, try sending PDF directly to OpenAI Vision
-            return extract_data_from_image(filepath)
+            # If conversion failed, try sending PDF directly to OpenAI Vision (if it supports it or fallback)
+            print("[WARN] PDF-to-Image conversion failed. Sending PDF path to extraction (might fail if not image).")
+            # For now, if image conversion fails for a PDF, we might be out of luck unless we treat it as text
+            # But let's check:
+            return extract_data_from_image(filepath) # This will likely fail or try to read bytes as image
             
     elif ext in ['jpg', 'jpeg', 'png']:
         # For images: use OpenAI Vision directly
-        print(f"[DEBUG] Image file, using OpenAI Vision: {filepath}")
+        print(f"[DEBUG] Image file detected, sending to OpenAI Vision: {filepath}")
         return extract_data_from_image(filepath)
     
+    print(f"[WARN] Unsupported file extension: {ext}")
     return {}
 
 def is_contract_complete(contract):
@@ -844,7 +868,8 @@ def generate():
         print(f"[DEBUG] Output path: {output_path}")
         
         doc = DocxTemplate(template_path)
-        doc.render(company_data)
+        # Apply placeholders to ensure consistent download experience
+        doc.render(apply_placeholders(company_data))
         doc.save(output_path)
         
         print("[DEBUG] Document generated successfully")
@@ -903,6 +928,50 @@ def edit_contract(id):
         print(f"[ERROR] Edit load failed: {e}")
         return f"Erro ao carregar contrato: {e}", 500
 
+def apply_placeholders(data):
+    """
+    Recursively replaces empty values in the data dictionary with placeholders.
+    """
+    if isinstance(data, dict):
+        new_data = {}
+        for k, v in data.items():
+            if isinstance(v, (dict, list)):
+                new_data[k] = apply_placeholders(v)
+            elif not v or str(v).strip() == "":
+                # Generate placeholder based on key
+                placeholder = f"[{k.upper().replace('_', ' ')}]"
+                
+                # Custom mappings for better readability
+                mappings = {
+                    'name': '[NOME COMPLETO]',
+                    'cpf': '[CPF]',
+                    'rg': '[RG]',
+                    'nationality': '[NACIONALIDADE]',
+                    'civil_state': '[ESTADO CIVIL]',
+                    'profession': '[PROFISSÃO]',
+                    'address': '[ENDEREÇO COMPLETO]',
+                    'company_name': '[RAZÃO SOCIAL]',
+                    'company_address': '[ENDEREÇO DA SEDE]',
+                    'capital_currency': '[CAPITAL R$]',
+                    'capital_amount_text': '[CAPITAL POR EXTENSO]',
+                    'start_date': '[DATA DE INÍCIO]',
+                    'signature_date': '[DATA DE ASSINATURA]'
+                }
+                
+                # Check for partner specific keys
+                if k in mappings:
+                    placeholder = mappings[k]
+                elif 'partner' in k and 'name' in k:
+                    placeholder = '[NOME DO SÓCIO]'
+                
+                new_data[k] = placeholder
+            else:
+                new_data[k] = v
+        return new_data
+    elif isinstance(data, list):
+        return [apply_placeholders(item) for item in data]
+    return data
+
 @app.route('/contract/<id>/download')
 def download_contract(id):
     if not supabase_client:
@@ -914,10 +983,34 @@ def download_contract(id):
             return "Contrato não encontrado", 404
             
         contract = result.data[0]
-        company_data = contract.get('company_data', {})
+        company_data = contract.get('company_data', {}) or {}
+        status = contract.get('status', 'draft')
         
-        if not company_data:
-            return "Dados do contrato incompletos", 400
+        # Check if force download is requested
+        force_download = request.args.get('force') == 'true'
+        
+        # If force download and data is empty/incomplete, populate with defaults to ensure keys exist
+        if force_download:
+             # Standard keys expected by the template
+            default_keys = [
+                'company_name', 'company_address', 'company_object', 'company_cnae_list',
+                'start_date', 'capital_currency', 'capital_amount_text', 'total_quotas',
+                'quota_value', 'forum_city', 'signature_date', 'administrator_names'
+            ]
+            for key in default_keys:
+                if key not in company_data or not company_data[key]:
+                    company_data[key] = ""
+            
+            # Ensure at least one dummy partner if none exist, so the loop in docx works
+            if 'partners' not in company_data or not company_data['partners']:
+                company_data['partners'] = [{
+                    'name': '', 'nationality': '', 'civil_state': '', 'regime': '',
+                    'profession': '', 'birth_date': '', 'cpf': '', 'address': '',
+                    'quotas': '', 'amount': '', 'percent': ''
+                }]
+
+        if not company_data and not force_download:
+            return "Dados do contrato incompletos (use 'Baixar Assim Mesmo' para forçar)", 400
             
         # Re-generate document
         template_path = os.path.join(BASE_DIR, 'contract_template.docx')
@@ -927,14 +1020,152 @@ def download_contract(id):
         output_filename = f"contract_{id}.docx"
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
         
+        # Apply placeholders if it's a draft or force download
+        data_to_render = company_data
+        if status != 'completed' or force_download:
+             data_to_render = apply_placeholders(company_data)
+        
         doc = DocxTemplate(template_path)
-        doc.render(company_data)
+        doc.render(data_to_render)
         doc.save(output_path)
         
         return send_file(output_path, as_attachment=True, download_name=f"Contrato Social - {company_data.get('company_name', 'Novo')}.docx")
     except Exception as e:
         print(f"[ERROR] Download generate failed: {e}")
+        traceback.print_exc()
         return f"Erro ao gerar download: {e}", 500
+
+@app.route('/api/extract-document', methods=['POST'])
+def extract_single_document():
+    """
+    API endpoint to extract data from a single document.
+    Designed to be called sequentially from frontend to avoid memory overload.
+    """
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+        
+        file = request.files['file']
+        doc_type = request.form.get('type', 'identity')  # identity, address, company
+        
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+
+        print(f"[DEBUG] Processing single file: {file.filename} (type: {doc_type})")
+        
+        # Save file temporarily
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"temp_{int(time.time())}_{file.filename}")
+        file.save(filepath)
+        
+        extracted_data = {}
+        
+        try:
+            # 1. Extract data based on type
+            if doc_type == 'address':
+                # For address documents
+                # First try to convert PDF to image if needed
+                ext = filepath.lower().split('.')[-1]
+                img_path = None
+                if ext == 'pdf':
+                    img_path = convert_pdf_to_image(filepath)
+                    working_path = img_path if img_path else filepath
+                else:
+                    working_path = filepath
+                
+                addr_data = extract_address_from_proof(working_path)
+                
+                # Cleanup temp image from conversion
+                if img_path and os.path.exists(img_path):
+                    try:
+                        os.remove(img_path)
+                    except: pass
+                    
+                if addr_data:
+                    # Format address
+                    if addr_data.get('full_address'):
+                        extracted_data['address'] = addr_data['full_address']
+                    elif addr_data.get('street'):
+                        extract_c = addr_data
+                        parts = [
+                            extract_c.get('street', ''),
+                            extract_c.get('number', ''),
+                            extract_c.get('complement', ''),
+                            extract_c.get('neighborhood', ''),
+                            f"{extract_c.get('city', '')}/{extract_c.get('state', '')}" if extract_c.get('city') else '',
+                            f"CEP {extract_c.get('zip_code', '')}" if extract_c.get('zip_code') else ''
+                        ]
+                        extracted_data['address'] = ', '.join(p for p in parts if p and p != '/' and p != 'CEP ')
+            
+            else:
+                # Identity or Company documents (generic extraction)
+                extracted_data = extract_document_data(filepath)
+        
+        except Exception as e:
+            print(f"[ERROR] Extraction failure: {e}")
+            traceback.print_exc()
+        finally:
+            # Always clean up the uploaded file
+            if os.path.exists(filepath):
+                try:
+                    os.remove(filepath)
+                except:
+                    pass
+            
+            # Explicit GC
+            gc.collect()
+        
+        return jsonify(extracted_data)
+
+    except Exception as e:
+        print(f"[ERROR] API Error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/process-json', methods=['POST'])
+def process_json():
+    """Receiver for the consolidated JSON data from client-side sequential processing."""
+    try:
+        print("[DEBUG] Received consolidated JSON data")
+        data = request.json
+        print(f"[DEBUG] Full JSON payload: {json.dumps(data, indent=2, ensure_ascii=False)}")
+        
+        partners_data = data.get('partners', [])
+        company_data = data.get('company', {})
+        
+        # Save to Supabase (Draft)
+        contract_id = None
+        if supabase_client:
+            try:
+                draft_payload = {
+                    'name': company_data.get('company_name') or f'Rascunho {len(partners_data)} Sócios',
+                    'status': 'draft',
+                    'partners': partners_data,
+                    'company_data': company_data,
+                    'updated_at': 'now()'
+                }
+                res = supabase_client.table('contracts').insert(draft_payload).execute()
+                if res.data:
+                    contract_id = res.data[0]['id']
+                    print(f"[DEBUG] Created DRAFT contract {contract_id}")
+            except Exception as e:
+                print(f"[ERROR] Failed to save draft: {e}")
+                # Don't fail the request, just log it
+        
+        has_data = any(p.get('name') for p in partners_data) or company_data.get('company_name')
+        if not has_data:
+            flash('Aviso: Poucos dados foram extraídos. Preencha manualmente.', 'warning')
+        else:
+            flash('Processamento concluído com sucesso!', 'success')
+
+        return render_template('form.html', 
+                             partners=partners_data,
+                             company=company_data,
+                             contract_id=contract_id,
+                             partner_count=len(partners_data))
+                             
+    except Exception as e:
+        print(f"[ERROR] Process JSON failed: {e}")
+        traceback.print_exc()
+        return "Erro ao processar dados", 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
