@@ -560,30 +560,47 @@ def index():
     
     if supabase_client:
         try:
-            # Fetch all contracts ordered by creation date (newest first)
+            print("[DEBUG] Fetching contracts from Supabase...")
             response = supabase_client.table('contracts').select('*').order('created_at').execute()
             contracts = response.data if response.data else []
-            # Reverse to show newest first (descending order)
+            print(f"[DEBUG] Fetched {len(contracts)} contracts")
+            
+            # Show newest first
             contracts.reverse()
             
-            # Recalculate status based on completeness
             for contract in contracts:
+                # Ensure partners is a list
+                if isinstance(contract.get('partners'), str):
+                    try:
+                        contract['partners'] = json.loads(contract['partners'])
+                    except:
+                        contract['partners'] = []
+                
+                # Ensure company_data is a dict
+                if isinstance(contract.get('company_data'), str):
+                    try:
+                        contract['company_data'] = json.loads(contract['company_data'])
+                    except:
+                        contract['company_data'] = {}
+
                 is_complete, missing = is_contract_complete(contract)
                 contract['is_complete'] = is_complete
                 contract['missing_fields'] = missing
                 
-                # Debug logging
-                print(f"[DEBUG] Contract '{contract.get('name', 'N/A')}': complete={is_complete}, missing={missing}")
-                
-                # Set effective status: draft if incomplete, otherwise use saved status
+                # Use company_data fields for the contract if top-level fields are missing
+                if not contract.get('name') or contract.get('name') == 'Novo Contrato':
+                    c_data = contract.get('company_data', {})
+                    if isinstance(c_data, dict):
+                        contract['name'] = c_data.get('company_name', contract.get('name', 'Sem Nome'))
+
+                # Set effective status
                 if not is_complete:
                     contract['effective_status'] = 'draft'
                 else:
                     contract['effective_status'] = 'completed'
-            
-            drafts_count = len([c for c in contracts if c.get('effective_status') == 'draft'])
+            drafts_count = len([c for c in contracts if c.get('effective_status', 'draft') == 'draft'])
             completed_count = len([c for c in contracts if c.get('effective_status') == 'completed'])
-            print(f"[DEBUG] Dashboard loaded: {len(contracts)} contracts, {drafts_count} drafts, {completed_count} completed")
+            
         except Exception as e:
             print(f"[ERROR] Failed to fetch contracts: {e}")
             traceback.print_exc()

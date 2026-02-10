@@ -62,6 +62,23 @@
             font-size: 0.9rem;
             color: var(--text-secondary);
         }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .btn-secondary {
+            background-color: #f8f9fa;
+            color: var(--text-primary);
+            border: 1px solid #ddd;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e2e6ea;
+        }
     </style>
 </head>
 
@@ -114,12 +131,13 @@
                     Processar Documentos ⚡
                 </button>
                 <br><br>
-                <a href="{{ url_for('index') }}" style="color: var(--text-secondary);">Voltar</a>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                    ← Voltar ao Início
+                </a>
             </div>
         </form>
     </div>
 
-    <!-- Processing Modal -->
     <div class="modal-overlay" id="processingModal">
         <div class="modal">
             <div class="spinner"></div>
@@ -128,6 +146,20 @@
             <p style="font-size: 0.8rem; color: #888; margin-top: 15px;">
                 Isso pode levar alguns minutos. Por favor, <strong>não feche a página</strong>.
             </p>
+        </div>
+    </div>
+
+    <!-- Confirm No Docs Modal -->
+    <div class="modal-overlay" id="noDocsModal" style="display: none;">
+        <div class="modal">
+            <div class="status-text">Nenhum documento selecionado</div>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                Você não selecionou nenhum documento para upload. Deseja continuar e preencher os dados manualmente?
+            </p>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="closeNoDocsModal()">Voltar e Inserir</button>
+                <button class="btn btn-primary" onclick="proceedWithoutDocs()">Continuar Mesmo Assim</button>
+            </div>
         </div>
     </div>
 
@@ -147,7 +179,8 @@
             });
 
             if (!hasFiles) {
-                alert("Por favor, selecione pelo menos um documento para continuar.");
+                // Show custom modal instead of alert
+                document.getElementById('noDocsModal').style.display = 'flex';
                 return;
             }
 
@@ -312,6 +345,36 @@
                 console.error("Error in submitConsolidatedData:", err);
                 throw err;
             }
+        }
+
+        function closeNoDocsModal() {
+            document.getElementById('noDocsModal').style.display = 'none';
+        }
+
+        async function proceedWithoutDocs() {
+            closeNoDocsModal();
+            const modal = document.getElementById('processingModal');
+            const statusText = document.getElementById('statusText');
+            const subStatus = document.getElementById('subStatus');
+
+            modal.style.display = 'flex';
+            statusText.innerText = "Criando rascunho...";
+            subStatus.innerText = "Preparando formulário vazio...";
+
+            const partnerCount = parseInt(document.getElementById('partnerTotal').value);
+
+            // Create empty structure
+            let finalData = {
+                partners: [],
+                company: {}
+            };
+
+            // Add empty partner placeholders so the backend knows how many to create
+            for (let i = 0; i < partnerCount; i++) {
+                finalData.partners.push({ id: i });
+            }
+
+            await submitConsolidatedData(finalData);
         }
     </script>
 </body>
