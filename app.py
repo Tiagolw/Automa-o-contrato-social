@@ -154,14 +154,15 @@ def compress_image_for_api(filepath, max_size_kb=1024, max_dimension=2500):
             # Compress to JPEG with high quality
             buffer = io.BytesIO()
             quality = 90  # Start higher for better OCR
-            img.save(buffer, format='JPEG', quality=quality, optimize=True)
+            # Optimize=True strips metadata which can cause issues
+            img.save(buffer, format='JPEG', quality=quality, optimize=True, subsampling=0)
             
             # Reduce quality if still too large
             while buffer.tell() > max_size_kb * 1024 and quality > 50:
                 buffer.seek(0)
                 buffer.truncate()
                 quality -= 10
-                img.save(buffer, format='JPEG', quality=quality, optimize=True)
+                img.save(buffer, format='JPEG', quality=quality, optimize=True, subsampling=0)
             
             buffer.seek(0)
             result = base64.b64encode(buffer.read()).decode('utf-8')
@@ -171,6 +172,18 @@ def compress_image_for_api(filepath, max_size_kb=1024, max_dimension=2500):
             return result, 'image/jpeg'
     except Exception as e:
         print(f"[WARN] Image compression failed: {e}, using original")
+        # If compression fails, try to just read and encode original if it's an image
+        try:
+            with open(filepath, "rb") as f:
+                header = f.read(4)
+                # Check for magic numbers: PNG, JPEG
+                if header.startswith(b'\x89PNG') or header.startswith(b'\xff\xd8'):
+                    f.seek(0)
+                    encoded = base64.b64encode(f.read()).decode('utf-8')
+                    mime = 'image/png' if header.startswith(b'\x89PNG') else 'image/jpeg'
+                    return encoded, mime
+        except:
+            pass
         return None, None
 
 def extract_data_from_image(filepath):
@@ -486,11 +499,10 @@ def extract_document_data(filepath):
                 if result:
                     return result
             
-            # If conversion failed, try sending PDF directly to OpenAI Vision (if it supports it or fallback)
-            print("[WARN] PDF-to-Image conversion failed. Sending PDF path to extraction (might fail if not image).")
-            # For now, if image conversion fails for a PDF, we might be out of luck unless we treat it as text
-            # But let's check:
-            return extract_data_from_image(filepath) # This will likely fail or try to read bytes as image
+            # If conversion failed, do NOT send PDF to Vision API.
+            # Instead, try a text extraction fallback with OCR if possible, or fail gracefully.
+            print("[WARN] PDF-to-Image conversion failed. Skipping Vision API to avoid invalid_image_format error.")
+            return {}
             
     elif ext in ['jpg', 'jpeg', 'png']:
         # For images: use OpenAI Vision directly
