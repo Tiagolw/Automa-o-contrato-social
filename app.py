@@ -427,7 +427,7 @@ def convert_pdf_to_image(filepath):
                 return None
                 
             page = doc[0]
-            pix = page.get_pixmap(dpi=300)  # Professional OCR standard
+            pix = page.get_pixmap(dpi=150)  # Optimized for free tier memory limits
             img_path = filepath.replace('.pdf', '_page1.png')
             pix.save(img_path)
             del pix  # Explicit cleanup

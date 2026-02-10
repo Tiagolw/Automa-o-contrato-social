@@ -304,6 +304,9 @@
                 }
             } catch (err) {
                 console.error("Fetch error in uploadSingleFile:", err);
+                if (err.message.includes("Failed to fetch")) {
+                    throw new Error("Erro de conexão. O servidor pode estar sobrecarregado ou o arquivo é muito grande para o plano gratuito.");
+                }
                 throw err;
             }
         }
