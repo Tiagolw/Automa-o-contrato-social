@@ -1124,9 +1124,13 @@ def extract_single_document():
 def process_json():
     """Receiver for the consolidated JSON data from client-side sequential processing."""
     try:
-        print("[DEBUG] Received consolidated JSON data")
+        print("[INFO] Received consolidated JSON data")
         data = request.json
-        print(f"[DEBUG] Full JSON payload: {json.dumps(data, indent=2, ensure_ascii=False)}")
+        if not data:
+             print("[ERROR] No JSON data received in /process-json")
+             return jsonify({'error': 'No data received'}), 400
+             
+        print(f"[DEBUG] JSON payload received, partners: {len(data.get('partners', []))}")
         
         partners_data = data.get('partners', [])
         company_data = data.get('company', {})
@@ -1145,10 +1149,10 @@ def process_json():
                 res = supabase_client.table('contracts').insert(draft_payload).execute()
                 if res.data:
                     contract_id = res.data[0]['id']
-                    print(f"[DEBUG] Created DRAFT contract {contract_id}")
+                    print(f"[INFO] Created DRAFT contract {contract_id}")
             except Exception as e:
                 print(f"[ERROR] Failed to save draft: {e}")
-                # Don't fail the request, just log it
+                traceback.print_exc()
         
         has_data = any(p.get('name') for p in partners_data) or company_data.get('company_name')
         if not has_data:
@@ -1165,7 +1169,20 @@ def process_json():
     except Exception as e:
         print(f"[ERROR] Process JSON failed: {e}")
         traceback.print_exc()
-        return "Erro ao processar dados", 500
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/health')
+def health_check():
+    """Diagnostic endpoint to check system status."""
+    status = {
+        'openai': openai_client is not None,
+        'mistral': mistral_client is not None,
+        'supabase': supabase_client is not None,
+        'upload_folder_exists': os.path.exists(app.config['UPLOAD_FOLDER']),
+        'upload_folder_writable': os.access(app.config['UPLOAD_FOLDER'], os.W_OK),
+        'environment': 'Vercel' if os.environ.get('VERCEL') else 'Local/Other'
+    }
+    return jsonify(status)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
